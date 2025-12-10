@@ -31,7 +31,7 @@ import { useNavigate } from 'react-router-dom'
 const DeviceManager = () => {
   const dispatch = useDispatch<AppDispatch>()
   const navigate = useNavigate()
-  const { devices, loading, error, selectedDevice } = useSelector((state: RootState) => state.devices)
+  const { devices, loading, error } = useSelector((state: RootState) => state.devices)
   
   // 初始化加载设备列表
   useEffect(() => {

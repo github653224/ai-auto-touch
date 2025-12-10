@@ -19,7 +19,7 @@ import {
   Modal,
 } from 'antd'
 import { ArrowLeftOutlined, SendOutlined, ClearOutlined, BlockOutlined } from '@ant-design/icons'
-import useWebSocket from 'react-use-websocket'
+import { useWebSocketManager } from '../hooks/useWebSocketManager'
 import { RootState, AppDispatch } from '../store'
 import { selectDevice } from '../features/deviceSlice'
 import {
@@ -31,7 +31,6 @@ import {
 
 const { Title, Text } = Typography
 const { TextArea } = Input
-const { TabPane } = Tabs
 
 const AIControl = () => {
   const dispatch = useDispatch<AppDispatch>()
@@ -44,24 +43,45 @@ const AIControl = () => {
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
   const [batchModalVisible, setBatchModalVisible] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
-  const wsUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-  const screenWsUrl = selectedDevice
-    ? `${wsUrl.replace('http', 'ws')}/api/v1/ws/screen/${selectedDevice}`
-    : ''
-
-  const { lastMessage, readyState } = useWebSocket(screenWsUrl, {
-    share: true,
-    onError: (err) => message.error(`屏幕连接错误: ${err.message}`),
-  })
+  // 使用全局WebSocket管理器（切换菜单时不会断开连接）
+  const { lastMessage, isConnected } = useWebSocketManager(selectedDevice)
 
   useEffect(() => {
-    if (lastMessage && lastMessage.data instanceof Blob) {
-      const videoBlob = new Blob([lastMessage.data], { type: 'video/mp4' })
-      const videoUrl = URL.createObjectURL(videoBlob)
-      if (videoRef.current) {
-        videoRef.current.src = videoUrl
-        videoRef.current.play().catch(() => {})
+    if (lastMessage && lastMessage.data) {
+      try {
+        // 处理JSON格式的截图数据
+        if (typeof lastMessage.data === 'string') {
+          const data = JSON.parse(lastMessage.data)
+          if (data.type === 'screenshot' && data.data) {
+            // 使用base64图片数据
+            if (videoRef.current) {
+              const img = document.createElement('img')
+              img.src = data.data
+              img.style.width = '100%'
+              img.style.height = '100%'
+              img.style.objectFit = 'contain'
+              
+              if (videoRef.current.parentElement) {
+                const container = videoRef.current.parentElement
+                const oldImg = container.querySelector('img')
+                if (oldImg) oldImg.remove()
+                container.appendChild(img)
+              }
+            }
+          }
+        }
+        // 兼容旧的Blob格式
+        else if (lastMessage.data instanceof Blob) {
+          const videoBlob = new Blob([lastMessage.data], { type: 'video/mp4' })
+          const videoUrl = URL.createObjectURL(videoBlob)
+          if (videoRef.current) {
+            videoRef.current.src = videoUrl
+            videoRef.current.play().catch(() => {})
+          }
+        }
+      } catch (e) {
+        console.warn('解析屏幕数据失败:', e)
       }
     }
   }, [lastMessage])
@@ -153,9 +173,9 @@ const AIControl = () => {
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Card
-        bodyStyle={{ padding: '0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        styles={{ body: { padding: '0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
         style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-        bordered={false}
+        variant="borderless"
       >
         {/* 顶部标题栏 */}
         <div style={{ 
@@ -224,7 +244,7 @@ const AIControl = () => {
                     <Text type="warning" style={{ color: '#fff' }}>
                       请选择设备以查看实时画面
                     </Text>
-                  ) : readyState !== 1 ? (
+                  ) : !isConnected ? (
                     <Text type="secondary" style={{ color: '#999' }}>
                       正在建立屏幕连接...
                     </Text>
@@ -254,10 +274,10 @@ const AIControl = () => {
                       }}
                     >
                       <Text
-                        type={readyState === 1 ? 'success' : 'danger'}
-                        style={{ color: readyState === 1 ? '#52c41a' : '#ff4d4f', fontSize: 12 }}
+                        type={isConnected ? 'success' : 'danger'}
+                        style={{ color: isConnected ? '#52c41a' : '#ff4d4f', fontSize: 12 }}
                       >
-                        {readyState === 1 ? '已连接' : '未连接'}
+                        {isConnected ? '已连接' : '未连接'}
                       </Text>
                     </div>
                   )}
@@ -268,111 +288,124 @@ const AIControl = () => {
 
           {/* 右侧：控制区域 */}
           <Col xs={24} lg={15} style={{ paddingLeft: 12, borderLeft: '1px solid #e8e8e8', height: '100%', overflow: 'auto' }}>
-            <Tabs defaultActiveKey="single" style={{ height: '100%' }}>
-              <TabPane tab="单设备控制" key="single">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                  <div>
-                    <Text strong>选择设备：</Text>
-                    <Select
-                      value={selectedDevice}
-                      onChange={handleDeviceChange}
-                      options={deviceOptions}
-                      style={{ width: '100%', marginTop: 8 }}
-                      placeholder="请选择设备"
-                    />
-                  </div>
-
-                  <div>
-                    <Text strong>自然语言指令：</Text>
-                    <TextArea
-                      placeholder="例如：打开小红书，搜索美食推荐，点赞第一个内容"
-                      value={command}
-                      onChange={(e) => setCommand(e.target.value)}
-                      rows={6}
-                      style={{ marginTop: 8 }}
-                    />
-
-                    <div style={{ textAlign: 'right', marginTop: 12 }}>
-                      <Button
-                        type="primary"
-                        icon={<SendOutlined />}
-                        onClick={handleExecute}
-                        loading={executing}
-                        disabled={!selectedDevice || executing}
-                      >
-                        执行指令
-                      </Button>
-                    </div>
-                  </div>
-
-                  {result && (
-                    <div>
-                      <Divider>执行结果</Divider>
-                      <Card>
-                        <pre
-                          style={{
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-all',
-                            maxHeight: '400px',
-                            overflow: 'auto',
-                          }}
-                        >
-                          {JSON.stringify(result, null, 2)}
-                        </pre>
-                      </Card>
-                    </div>
-                  )}
-                </Space>
-              </TabPane>
-
-          <TabPane tab="操作历史" key="history">
-            <div style={{ textAlign: 'right', marginBottom: 16 }}>
-              <Button icon={<ClearOutlined />} onClick={handleClearHistory} disabled={history.length === 0}>
-                清空历史
-              </Button>
-            </div>
-
-            {history.length === 0 ? (
-              <Alert message="暂无操作历史" type="info" showIcon style={{ textAlign: 'center' }} />
-            ) : (
-              <List
-                dataSource={history}
-                renderItem={(item) => (
-                  <List.Item>
-                    <Card>
-                      <div style={{ marginBottom: 8 }}>
-                        <Text strong>设备ID：</Text>
-                        {item.deviceId}
-                      </div>
-                      <div style={{ marginBottom: 8 }}>
-                        <Text strong>指令：</Text>
-                        {item.command}
-                      </div>
-                      <div style={{ marginBottom: 8 }}>
-                        <Text strong>执行时间：</Text>
-                        {new Date(item.timestamp).toLocaleString()}
-                      </div>
+            <Tabs 
+              defaultActiveKey="single" 
+              style={{ height: '100%' }}
+              items={[
+                {
+                  key: 'single',
+                  label: '单设备控制',
+                  children: (
+                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
                       <div>
-                        <Text strong>执行结果：</Text>
-                        <pre
-                          style={{
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-all',
-                            maxHeight: '200px',
-                            overflow: 'auto',
-                            marginTop: 8,
-                          }}
-                        >
-                          {JSON.stringify(item.result, null, 2)}
-                        </pre>
+                        <Text strong>选择设备：</Text>
+                        <Select
+                          value={selectedDevice}
+                          onChange={handleDeviceChange}
+                          options={deviceOptions}
+                          style={{ width: '100%', marginTop: 8 }}
+                          placeholder="请选择设备"
+                        />
                       </div>
-                    </Card>
-                  </List.Item>
-                )}
-              />
-            )}
-          </TabPane>
-        </Tabs>
+
+                      <div>
+                        <Text strong>自然语言指令：</Text>
+                        <TextArea
+                          placeholder="例如：打开小红书，搜索美食推荐，点赞第一个内容"
+                          value={command}
+                          onChange={(e) => setCommand(e.target.value)}
+                          rows={6}
+                          style={{ marginTop: 8 }}
+                        />
+
+                        <div style={{ textAlign: 'right', marginTop: 12 }}>
+                          <Button
+                            type="primary"
+                            icon={<SendOutlined />}
+                            onClick={handleExecute}
+                            loading={executing}
+                            disabled={!selectedDevice || executing}
+                          >
+                            执行指令
+                          </Button>
+                        </div>
+                      </div>
+
+                      {result && (
+                        <div>
+                          <Divider>执行结果</Divider>
+                          <Card>
+                            <pre
+                              style={{
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-all',
+                                maxHeight: '400px',
+                                overflow: 'auto',
+                              }}
+                            >
+                              {JSON.stringify(result, null, 2)}
+                            </pre>
+                          </Card>
+                        </div>
+                      )}
+                    </Space>
+                  )
+                },
+                {
+                  key: 'history',
+                  label: '操作历史',
+                  children: (
+                    <>
+                      <div style={{ textAlign: 'right', marginBottom: 16 }}>
+                        <Button icon={<ClearOutlined />} onClick={handleClearHistory} disabled={history.length === 0}>
+                          清空历史
+                        </Button>
+                      </div>
+
+                      {history.length === 0 ? (
+                        <Alert message="暂无操作历史" type="info" showIcon style={{ textAlign: 'center' }} />
+                      ) : (
+                        <List
+                          dataSource={history}
+                          renderItem={(item) => (
+                            <List.Item>
+                              <Card>
+                                <div style={{ marginBottom: 8 }}>
+                                  <Text strong>设备ID：</Text>
+                                  {item.deviceId}
+                                </div>
+                                <div style={{ marginBottom: 8 }}>
+                                  <Text strong>指令：</Text>
+                                  {item.command}
+                                </div>
+                                <div style={{ marginBottom: 8 }}>
+                                  <Text strong>执行时间：</Text>
+                                  {new Date(item.timestamp).toLocaleString()}
+                                </div>
+                                <div>
+                                  <Text strong>执行结果：</Text>
+                                  <pre
+                                    style={{
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-all',
+                                      maxHeight: '200px',
+                                      overflow: 'auto',
+                                      marginTop: 8,
+                                    }}
+                                  >
+                                    {JSON.stringify(item.result, null, 2)}
+                                  </pre>
+                                </div>
+                              </Card>
+                            </List.Item>
+                          )}
+                        />
+                      )}
+                    </>
+                  )
+                }
+              ]}
+            />
           </Col>
         </Row>
       </Card>
