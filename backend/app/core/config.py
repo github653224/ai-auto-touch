@@ -1,4 +1,4 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 import os
 
@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     HOST: str = os.getenv("HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("PORT", 8000))
+    PORT: int = int(os.getenv("PORT", 8001))  # 默认8001，避免与AI模型服务(8000)冲突
     DEBUG: bool = os.getenv("DEBUG", "True") == "True"
     WORKERS: int = int(os.getenv("WORKERS", 1))
     
