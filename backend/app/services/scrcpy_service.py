@@ -41,9 +41,11 @@ class ScrcpyManager:
     def __init__(self):
         self.device_manager = DeviceManager()
         self.screen_streams: Dict[str, asyncio.Task] = {}
+        self.h264_streams: Dict[str, asyncio.Task] = {}
         self.websocket_connections: Dict[str, WebSocket] = {}
         self.streaming_flags: Dict[str, bool] = {}
         self.scrcpy_processes: Dict[str, subprocess.Popen] = {}
+        self.h264_processes: Dict[str, asyncio.subprocess.Process] = {}
     
     async def start_screen_stream(self, device_id: str, websocket: WebSocket):
         """启动屏幕流传输（使用scrcpy实时流）"""
@@ -254,6 +256,141 @@ class ScrcpyManager:
         except Exception as e:
             logger.error(f"停止屏幕流失败: {str(e)}")
     
+    # ------------------------------------------------------------------
+    # H264 实时视频流（基于 screenrecord --output-format=h264）
+    # ------------------------------------------------------------------
+
+    async def start_h264_stream(self, device_id: str, websocket: WebSocket):
+        """启动H264实时视频流"""
+        try:
+            # 确保设备已连接
+            if not await self.device_manager.connect_device(device_id):
+                error_msg = f"设备 {device_id} 未连接"
+                logger.error(error_msg)
+                await websocket.send_json({"type": "error", "message": error_msg})
+                return
+
+            # 如果已有流在运行，先停止
+            await self.stop_h264_stream(device_id)
+
+            self.websocket_connections[device_id] = websocket
+            self.streaming_flags[device_id] = True
+
+            task = asyncio.create_task(self._stream_h264(device_id, websocket))
+            self.h264_streams[device_id] = task
+            logger.info(f"设备 {device_id} H264 视频流已启动")
+        except Exception as e:
+            logger.error(f"启动H264视频流失败: {str(e)}", exc_info=True)
+            await websocket.send_json({"type": "error", "message": str(e)})
+
+    async def stop_h264_stream(self, device_id: str):
+        """停止H264视频流"""
+        try:
+            self.streaming_flags[device_id] = False
+
+            # 取消任务
+            if device_id in self.h264_streams:
+                task = self.h264_streams[device_id]
+                if not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+                del self.h264_streams[device_id]
+
+            # 终止进程
+            if device_id in self.h264_processes:
+                proc = self.h264_processes[device_id]
+                if proc.returncode is None:
+                    proc.kill()
+                    try:
+                        await proc.wait()
+                    except Exception:
+                        pass
+                del self.h264_processes[device_id]
+
+            if device_id in self.websocket_connections:
+                del self.websocket_connections[device_id]
+
+            logger.info(f"设备 {device_id} H264 视频流已停止")
+        except Exception as e:
+            logger.error(f"停止H264视频流失败: {str(e)}")
+
+    async def _stream_h264(self, device_id: str, websocket: WebSocket):
+        """使用 screenrecord 输出 H264 原始码流，通过 WebSocket 二进制发送"""
+        adb_path = get_adb_path()
+
+        # 目标分辨率和码率，可按需调整
+        target_size = os.getenv("H264_SIZE", "720x1280")
+        target_bitrate = os.getenv("H264_BITRATE", "8000000")  # 8Mbps
+        max_fps = os.getenv("H264_MAX_FPS", "30")
+
+        cmd_parts = [
+            adb_path, "-s", device_id, "exec-out",
+            "screenrecord",
+            f"--output-format=h264",
+            f"--bit-rate={target_bitrate}",
+            f"--size={target_size}",
+            f"--time-limit=1800",  # 30分钟，超时后可重启
+            "--", "-"  # 输出到stdout
+        ]
+
+        logger.info(f"启动 screenrecord H264: {' '.join(cmd_parts)}")
+
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd_parts,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=os.environ.copy()
+            )
+            self.h264_processes[device_id] = proc
+
+            # 读取H264码流并通过WebSocket发送（二进制帧）
+            while self.streaming_flags.get(device_id, False):
+                try:
+                    chunk = await asyncio.wait_for(proc.stdout.read(4096), timeout=3.0)
+                    if not chunk:
+                        # 进程可能结束
+                        if proc.returncode is not None:
+                            logger.warning(f"H264 进程结束，returncode={proc.returncode}")
+                            break
+                        continue
+
+                    # 发送二进制数据
+                    try:
+                        await websocket.send_bytes(chunk)
+                    except Exception as send_err:
+                        logger.error(f"H264数据发送失败: {send_err}")
+                        break
+                except asyncio.TimeoutError:
+                    continue
+                except Exception as e:
+                    logger.error(f"H264流异常: {e}")
+                    break
+
+        except asyncio.CancelledError:
+            logger.info(f"设备 {device_id} H264 任务被取消")
+        except Exception as e:
+            logger.error(f"H264流发生错误: {str(e)}", exc_info=True)
+        finally:
+            # 清理
+            if device_id in self.h264_processes:
+                proc = self.h264_processes[device_id]
+                if proc.returncode is None:
+                    proc.kill()
+                    try:
+                        await proc.wait()
+                    except Exception:
+                        pass
+                del self.h264_processes[device_id]
+
+            if device_id in self.websocket_connections:
+                del self.websocket_connections[device_id]
+
+            logger.info(f"设备 {device_id} H264 视频流任务结束")
+
     async def push_device_status(self, websocket: WebSocket):
         """推送设备状态更新"""
         try:

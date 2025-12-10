@@ -12,7 +12,9 @@ import {
   Spin, 
   Slider,
   message,
-  Space
+  Space,
+  Switch,
+  Tag
 } from 'antd'
 import { 
   ArrowLeftOutlined,
@@ -21,6 +23,7 @@ import {
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useWebSocketManager } from '../hooks/useWebSocketManager'
+import { useH264Player } from '../hooks/useH264Player'
 
 const { Text } = Typography
 
@@ -33,46 +36,46 @@ const ScreenDisplay = () => {
   const [resolution, setResolution] = useState(1080) // 分辨率
   const [fullscreen, setFullscreen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [useVideo, setUseVideo] = useState(true) // 优先使用低延迟视频流
   
-  // 使用全局WebSocket管理器（切换菜单时不会断开连接）
-  const { lastMessage, readyState, isConnected } = useWebSocketManager(selectedDevice)
+  // 使用全局WebSocket管理器（截图流），仅在非视频模式下启用
+  const { lastMessage, readyState, isConnected: screenshotConnected } = useWebSocketManager(
+    useVideo ? null : selectedDevice
+  )
+
+  // H264 低延迟播放器（实验）
+  const { supported: h264Supported, error: h264Error, stats: h264Stats } = useH264Player({
+    deviceId: selectedDevice,
+    enabled: useVideo,
+    canvasRef,
+  })
   
   // 连接状态提示
   useEffect(() => {
-    if (selectedDevice && isConnected) {
+    const connected = useVideo ? h264Supported && !h264Error : screenshotConnected
+    if (selectedDevice && connected) {
       console.log('屏幕连接已建立')
-    } else if (selectedDevice && !isConnected && readyState === 3) { // 3 = CLOSED
+    } else if (selectedDevice && !connected && readyState === 3) { // 3 = CLOSED
       console.log('屏幕连接已断开')
     }
-  }, [selectedDevice, isConnected, readyState])
+  }, [selectedDevice, useVideo, h264Supported, h264Error, screenshotConnected, readyState])
   
-  // 处理屏幕截图流
+  // 处理屏幕截图流（仅在非视频模式下）
   useEffect(() => {
+    if (useVideo) return
     if (!lastMessage) return
     
     try {
-      // lastMessage 已经是解析后的对象（从 useWebSocketManager 返回）
-      // 格式: {type: 'screenshot', data: 'data:image/png;base64,...', frame: 2}
       const data = lastMessage
-      
-      console.log('处理消息:', data.type, data.frame ? `帧#${data.frame}` : '', 'data类型:', typeof data.data)
-      
       if (data.type === 'screenshot' && data.data) {
-        console.log(`收到截图帧 #${data.frame}, 数据长度: ${data.data.length}`)
-        
-        // 使用ID选择器，更可靠
         const container = document.getElementById('screen-container')
-        console.log('容器元素:', container ? '找到' : '未找到')
-        
         if (!container) {
           console.warn('❌ 找不到屏幕容器元素 #screen-container')
           return
         }
-        
-        // 查找或创建img元素
         let img = container.querySelector('img') as HTMLImageElement
         if (!img) {
-          console.log('创建新的img元素')
           img = document.createElement('img')
           img.style.width = '100%'
           img.style.height = '100%'
@@ -82,30 +85,14 @@ const ScreenDisplay = () => {
           img.style.maxHeight = '100%'
           container.appendChild(img)
         }
-        
-        // 更新图片源（data.data 已经是 data:image/png;base64,... 格式）
-        console.log('设置图片源，数据前缀:', data.data.substring(0, 50))
         img.src = data.data
-        
-        img.onerror = (e) => {
-          console.error('❌ 图片加载失败:', e)
-          console.error('数据长度:', data.data?.length)
-          console.error('数据前缀:', data.data?.substring(0, 200))
-        }
-        
-        img.onload = () => {
-          console.log('✅ 图片加载成功，尺寸:', img.naturalWidth, 'x', img.naturalHeight)
-        }
       } else if (data.type === 'error') {
-        console.error('屏幕流错误:', data.message)
         message.error(`屏幕流错误: ${data.message}`)
-      } else {
-        console.log('未知消息类型:', data.type, data)
       }
     } catch (e) {
       console.error('处理屏幕数据失败:', e, lastMessage)
     }
-  }, [lastMessage])
+  }, [lastMessage, useVideo])
   
   // 切换设备
   const handleDeviceChange = (deviceId: string) => {
@@ -151,6 +138,7 @@ const ScreenDisplay = () => {
     value: device.device_id
   }))
   
+  const isConnected = useVideo ? (h264Supported && !h264Error) : (readyState === 1)
   // readyState: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
   const connectionStatus = isConnected ? 1 : readyState
   
@@ -194,6 +182,27 @@ const ScreenDisplay = () => {
               >
                 画质设置
               </Button>
+              <Space size="small">
+                <Switch
+                  checked={useVideo}
+                  disabled={!h264Supported}
+                  onChange={(checked) => setUseVideo(checked)}
+                  checkedChildren="低延迟视频"
+                  unCheckedChildren="截图模式"
+                />
+                {useVideo ? (
+                  h264Error ? (
+                    <Tag color="red">视频流错误</Tag>
+                  ) : (
+                    <Tag color="blue">视频流</Tag>
+                  )
+                ) : (
+                  <Tag>截图流</Tag>
+                )}
+                {useVideo && h264Stats.frames > 0 && (
+                  <Tag color="green">帧: {h264Stats.frames}</Tag>
+                )}
+              </Space>
               
               <Text>
                 连接状态: {connectionStatus === 1 ? (
@@ -257,35 +266,48 @@ const ScreenDisplay = () => {
                   <div style={{ height: '100%' }} />
                 </Spin>
               ) : (
-                <div 
-                  id="screen-container"
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
-                    position: 'relative',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    backgroundColor: '#000'
-                  }}
-                >
-                  <video 
-                    ref={videoRef}
-                    style={{ 
-                      maxWidth: '100%', 
-                      maxHeight: '100%',
-                      objectFit: 'contain',
-                      display: 'none' // 隐藏video，使用img显示截图
-                    }}
-                    autoPlay
-                    muted
-                    playsInline
-                  />
-                  {/* 截图会通过useEffect动态添加到这个容器 */}
-                  {connectionStatus !== 1 && (
-                    <Text type="warning" style={{ color: '#fff' }}>等待连接...</Text>
+                <>
+                  {useVideo && h264Supported && !h264Error ? (
+                    <canvas
+                      ref={canvasRef}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        backgroundColor: '#000',
+                      }}
+                    />
+                  ) : (
+                    <div 
+                      id="screen-container"
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        position: 'relative',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: '#000'
+                      }}
+                    >
+                      <video 
+                        ref={videoRef}
+                        style={{ 
+                          maxWidth: '100%', 
+                          maxHeight: '100%',
+                          objectFit: 'contain',
+                          display: 'none' // 隐藏video，使用img显示截图
+                        }}
+                        autoPlay
+                        muted
+                        playsInline
+                      />
+                      {connectionStatus !== 1 && (
+                        <Text type="warning" style={{ color: '#fff' }}>等待连接...</Text>
+                      )}
+                    </div>
                   )}
-                </div>
+                </>
               )}
             </div>
           </Col>

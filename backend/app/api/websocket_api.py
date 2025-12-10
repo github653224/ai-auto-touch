@@ -34,6 +34,32 @@ async def websocket_screen(websocket: WebSocket, device_id: str):
         # 确保停止流
         await scrcpy_manager.stop_screen_stream(device_id)
 
+@router.websocket("/api/v1/ws/h264/{device_id}")
+async def websocket_h264(websocket: WebSocket, device_id: str):
+    """H264 实时视频流（基于 screenrecord）"""
+    await websocket.accept()
+    try:
+        await scrcpy_manager.start_h264_stream(device_id, websocket)
+        # 保持连接，接收心跳
+        while True:
+            try:
+                data = await websocket.receive_text()
+                if data == "ping":
+                    await websocket.send_text("pong")
+            except WebSocketDisconnect:
+                break
+            except Exception:
+                break
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
+    finally:
+        await scrcpy_manager.stop_h264_stream(device_id)
+
 @router.websocket("/device-status")
 async def websocket_device_status(websocket: WebSocket):
     """设备状态实时推送WebSocket"""
