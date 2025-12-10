@@ -11,15 +11,27 @@ async def websocket_screen(websocket: WebSocket, device_id: str):
     try:
         # 启动scrcpy视频流
         await scrcpy_manager.start_screen_stream(device_id, websocket)
-        # 保持连接
+        # 保持连接，接收心跳
         while True:
-            data = await websocket.receive_text()
-            if data == "ping":
-                await websocket.send_text("pong")
+            try:
+                data = await websocket.receive_text()
+                if data == "ping":
+                    await websocket.send_text("pong")
+            except WebSocketDisconnect:
+                break
+            except Exception as e:
+                # 如果接收消息失败，可能是连接断开
+                break
     except WebSocketDisconnect:
-        await scrcpy_manager.stop_screen_stream(device_id)
+        pass  # 正常断开
     except Exception as e:
-        await websocket.send_text(f"error: {str(e)}")
+        # 尝试发送错误消息（如果连接还在）
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+        except:
+            pass
+    finally:
+        # 确保停止流
         await scrcpy_manager.stop_screen_stream(device_id)
 
 @router.websocket("/device-status")
