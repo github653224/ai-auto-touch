@@ -48,41 +48,51 @@ const AIControl = () => {
   const { lastMessage, isConnected } = useWebSocketManager(selectedDevice)
 
   useEffect(() => {
-    if (lastMessage && lastMessage.data) {
-      try {
-        // 处理JSON格式的截图数据
-        if (typeof lastMessage.data === 'string') {
-          const data = JSON.parse(lastMessage.data)
-          if (data.type === 'screenshot' && data.data) {
-            // 使用base64图片数据
-            if (videoRef.current) {
-              const img = document.createElement('img')
-              img.src = data.data
-              img.style.width = '100%'
-              img.style.height = '100%'
-              img.style.objectFit = 'contain'
-              
-              if (videoRef.current.parentElement) {
-                const container = videoRef.current.parentElement
-                const oldImg = container.querySelector('img')
-                if (oldImg) oldImg.remove()
-                container.appendChild(img)
-              }
-            }
-          }
+    if (!lastMessage) return
+    
+    try {
+      // lastMessage 已经是解析后的对象（从 useWebSocketManager 返回）
+      // 格式: {type: 'screenshot', data: 'data:image/png;base64,...', frame: 2}
+      const data = lastMessage
+      
+      if (data.type === 'screenshot' && data.data) {
+        console.log(`AI控制页面收到截图帧 #${data.frame}`)
+        
+        // 使用ID选择器查找容器元素（更可靠）
+        const container = document.getElementById('ai-screen-container')
+        if (!container) {
+          console.warn('❌ 找不到屏幕容器元素 #ai-screen-container')
+          return
         }
-        // 兼容旧的Blob格式
-        else if (lastMessage.data instanceof Blob) {
-          const videoBlob = new Blob([lastMessage.data], { type: 'video/mp4' })
-          const videoUrl = URL.createObjectURL(videoBlob)
-          if (videoRef.current) {
-            videoRef.current.src = videoUrl
-            videoRef.current.play().catch(() => {})
-          }
+        
+        // 查找或创建img元素
+        let img = container.querySelector('img') as HTMLImageElement
+        if (!img) {
+          console.log('创建新的img元素')
+          img = document.createElement('img')
+          img.style.width = '100%'
+          img.style.height = '100%'
+          img.style.objectFit = 'contain'
+          img.style.display = 'block'
+          img.style.maxWidth = '100%'
+          img.style.maxHeight = '100%'
+          container.appendChild(img)
         }
-      } catch (e) {
-        console.warn('解析屏幕数据失败:', e)
+        
+        // 更新图片源
+        img.src = data.data
+        img.onerror = (e) => {
+          console.error('❌ AI控制页面图片加载失败:', e)
+        }
+        img.onload = () => {
+          console.log('✅ AI控制页面图片加载成功，尺寸:', img.naturalWidth, 'x', img.naturalHeight)
+        }
+      } else if (data.type === 'error') {
+        console.error('屏幕流错误:', data.message)
+        message.error(`屏幕流错误: ${data.message}`)
       }
+    } catch (e) {
+      console.error('处理屏幕数据失败:', e, lastMessage)
     }
   }, [lastMessage])
 
@@ -228,6 +238,7 @@ const AIControl = () => {
                 }}
               >
                 <div
+                  id="ai-screen-container"
                   style={{
                     width: '100%',
                     height: '100%',
@@ -249,17 +260,21 @@ const AIControl = () => {
                       正在建立屏幕连接...
                     </Text>
                   ) : (
-                    <video
-                      ref={videoRef}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'contain',
-                      }}
-                      autoPlay
-                      muted
-                      playsInline
-                    />
+                    <>
+                      <video
+                        ref={videoRef}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'contain',
+                          display: 'none', // 隐藏video，使用img显示截图
+                        }}
+                        autoPlay
+                        muted
+                        playsInline
+                      />
+                      {/* 截图会通过useEffect动态添加到这个容器 */}
+                    </>
                   )}
                   {selectedDevice && (
                     <div
