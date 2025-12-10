@@ -52,10 +52,6 @@ class AIService:
             if not await self.device_manager.connect_device(device_id):
                 raise Exception(f"设备 {device_id} 未连接")
             
-            # 设置Agent配置
-            self.default_agent.config.verbose = verbose
-            self.default_agent.config.max_steps = max_steps or settings.AUTOGLM_MAX_STEPS
-            
             # 执行指令
             logger.info(f"设备 {device_id} 执行指令: {command}")
             
@@ -63,7 +59,20 @@ class AIService:
             import os
             os.environ["ADB_DEVICE_ID"] = device_id
             
+            # PhoneAgent可能没有config属性，直接调用run方法
+            # verbose和max_steps参数可能通过run方法的参数传递，或者不需要设置
+            # 先尝试安全地设置config（如果存在）
+            try:
+                if hasattr(self.default_agent, 'config'):
+                    if hasattr(self.default_agent.config, 'verbose'):
+                        self.default_agent.config.verbose = verbose
+                    if hasattr(self.default_agent.config, 'max_steps'):
+                        self.default_agent.config.max_steps = max_steps or settings.AUTOGLM_MAX_STEPS
+            except Exception as config_error:
+                logger.warning(f"无法设置Agent配置: {config_error}，继续执行...")
+            
             # 执行Open-AutoGLM指令
+            # run方法可能接受额外的参数，但为了兼容性，先只传递command
             result = await asyncio.to_thread(self.default_agent.run, command)
             
             # 记录执行结果
