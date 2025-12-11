@@ -114,6 +114,50 @@ export function useH264Player(options: UseH264PlayerOptions): UseH264PlayerResul
         return
       }
       const data = new Uint8Array(evt.data)
+      
+      // 检测是否是 JPEG 图片（JPEG 文件头：FF D8 FF）
+      const isJPEG = data.length >= 3 && 
+        data[0] === 0xFF && data[1] === 0xD8 && data[2] === 0xFF
+      
+      // 检测是否是 PNG 图片（PNG 文件头：89 50 4E 47 0D 0A 1A 0A）
+      const isPNG = data.length >= 8 && 
+        data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4E && data[3] === 0x47 &&
+        data[4] === 0x0D && data[5] === 0x0A && data[6] === 0x1A && data[7] === 0x0A
+      
+      if (isJPEG || isPNG) {
+        // 如果是图片（JPEG 或 PNG），转换为 base64 并显示
+        try {
+          // 使用更高效的方式转换 base64
+          const binary = Array.from(data, byte => String.fromCharCode(byte)).join('')
+          const base64 = btoa(binary)
+          const mimeType = isJPEG ? 'image/jpeg' : 'image/png'
+          
+          const img = new Image()
+          img.onload = () => {
+            if (canvas) {
+              canvas.width = img.width
+              canvas.height = img.height
+              setSize({ width: img.width, height: img.height })
+              const ctx = canvas.getContext('2d')
+              if (ctx) {
+                ctx.drawImage(img, 0, 0)
+                frameCounterRef.current += 1
+                setFrames(frameCounterRef.current)
+              }
+            }
+          }
+          img.onerror = (e) => {
+            console.error('图片加载失败:', e)
+          }
+          img.src = `data:${mimeType};base64,${base64}`
+        } catch (e) {
+          console.error('图片显示失败:', e)
+          setError(String(e))
+        }
+        return
+      }
+      
+      // 否则尝试作为 H264 数据解码
       const key = hasKeyFrame(data) ? 'key' : 'delta'
       try {
         // 递增时间戳（微秒）

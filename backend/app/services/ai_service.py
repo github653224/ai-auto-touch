@@ -3,6 +3,7 @@ import json
 from typing import Dict, Any, Optional
 from phone_agent import PhoneAgent
 from phone_agent.model import ModelConfig
+from phone_agent.agent import AgentConfig
 from app.core.config import settings
 from app.services.device_service import DeviceManager
 from app.utils.logger_utils import logger
@@ -22,7 +23,7 @@ class AIService:
                 base_url=settings.AUTOGLM_BASE_URL,
                 model_name=settings.AUTOGLM_MODEL_NAME
             )
-            # 创建默认Agent
+            # 创建默认Agent（device_id会在执行时动态设置）
             self.default_agent = PhoneAgent(model_config=model_config)
             logger.info("Open-AutoGLM Agent 初始化成功")
         except Exception as e:
@@ -55,25 +56,37 @@ class AIService:
             # 执行指令
             logger.info(f"设备 {device_id} 执行指令: {command}")
             
-            # 这里需要确保ADB_DEVICE_ID环境变量正确设置
+            # 设置环境变量（某些组件可能会读取）
             import os
             os.environ["ADB_DEVICE_ID"] = device_id
             
-            # PhoneAgent可能没有config属性，直接调用run方法
-            # verbose和max_steps参数可能通过run方法的参数传递，或者不需要设置
-            # 先尝试安全地设置config（如果存在）
-            try:
-                if hasattr(self.default_agent, 'config'):
-                    if hasattr(self.default_agent.config, 'verbose'):
-                        self.default_agent.config.verbose = verbose
-                    if hasattr(self.default_agent.config, 'max_steps'):
-                        self.default_agent.config.max_steps = max_steps or settings.AUTOGLM_MAX_STEPS
-            except Exception as config_error:
-                logger.warning(f"无法设置Agent配置: {config_error}，继续执行...")
+            # 为每个设备创建独立的Agent实例，确保device_id正确传递
+            if device_id not in self.agent_instances:
+                model_config = ModelConfig(
+                    base_url=settings.AUTOGLM_BASE_URL,
+                    model_name=settings.AUTOGLM_MODEL_NAME
+                )
+                agent_config = AgentConfig(
+                    device_id=device_id,
+                    verbose=verbose,
+                    max_steps=max_steps or settings.AUTOGLM_MAX_STEPS
+                )
+                self.agent_instances[device_id] = PhoneAgent(
+                    model_config=model_config,
+                    agent_config=agent_config
+                )
+                logger.info(f"为设备 {device_id} 创建了新的Agent实例")
+            else:
+                # 更新现有Agent的配置
+                agent = self.agent_instances[device_id]
+                if hasattr(agent, 'agent_config'):
+                    agent.agent_config.verbose = verbose
+                    if max_steps:
+                        agent.agent_config.max_steps = max_steps
             
-            # 执行Open-AutoGLM指令
-            # run方法可能接受额外的参数，但为了兼容性，先只传递command
-            result = await asyncio.to_thread(self.default_agent.run, command)
+            # 使用设备特定的Agent执行指令
+            agent = self.agent_instances[device_id]
+            result = await asyncio.to_thread(agent.run, command)
             
             # 记录执行结果
             execution_result = {
@@ -86,7 +99,7 @@ class AIService:
             logger.info(f"指令执行完成: {execution_result}")
             return execution_result
         except Exception as e:
-            logger.error(f"执行自然语言指令失败: {str(e)}")
+            logger.error(f"执行自然语言指令失败: {str(e)}", exc_info=True)
             return {
                 "command": command,
                 "device_id": device_id,

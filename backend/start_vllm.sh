@@ -88,12 +88,38 @@ echo "按 Ctrl+C 停止服务"
 echo "=========================================="
 echo ""
 
-# 构建vLLM启动命令
-VLLM_CMD="python3 -m vllm.entrypoints.openai.api_server"
+# 解析可选参数（支持 --mm-processor-cache-type={lru,shm}，默认lru避免shm冲突）
+MM_CACHE_TYPE="lru"
+for arg in "$@"; do
+  case "$arg" in
+    --mm-processor-cache-type=*)
+      MM_CACHE_TYPE="${arg#*=}"
+      ;;
+  esac
+done
+
+# 清理可能残留的共享内存，避免 FileExistsError
+python - <<'PY'
+from multiprocessing import shared_memory
+for name in ["VLLM_OBJECT_STORAGE_SHM_BUFFER"]:
+    try:
+        shm = shared_memory.SharedMemory(name=name)
+        shm.close()
+        shm.unlink()
+        print(f"removed shm: {name}")
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        print(f"warn: could not clean shm {name}: {e}")
+PY
+
+# 构建vLLM启动命令（使用当前conda环境中的python）
+PY_BIN="$(which python)"
+VLLM_CMD="${PY_BIN} -m vllm.entrypoints.openai.api_server"
 VLLM_CMD="${VLLM_CMD} --served-model-name autoglm-phone-9b"
 VLLM_CMD="${VLLM_CMD} --allowed-local-media-path /"
 VLLM_CMD="${VLLM_CMD} --mm-encoder-tp-mode data"
-VLLM_CMD="${VLLM_CMD} --mm_processor_cache_type shm"
+VLLM_CMD="${VLLM_CMD} --mm_processor_cache_type ${MM_CACHE_TYPE}"
 VLLM_CMD="${VLLM_CMD} --mm_processor_kwargs '{\"max_pixels\":5000000}'"
 VLLM_CMD="${VLLM_CMD} --max-model-len 25480"
 VLLM_CMD="${VLLM_CMD} --chat-template-content-format string"

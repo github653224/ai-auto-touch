@@ -37,7 +37,7 @@ const ScreenDisplay = () => {
   const [fullscreen, setFullscreen] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [useVideo, setUseVideo] = useState(true) // 优先使用低延迟视频流
+  const [useVideo, setUseVideo] = useState(true) // 默认使用视频流模式（H264）
   
   // 使用全局WebSocket管理器（截图流），仅在非视频模式下启用
   const { lastMessage, readyState, isConnected: screenshotConnected } = useWebSocketManager(
@@ -55,9 +55,14 @@ const ScreenDisplay = () => {
   useEffect(() => {
     const connected = useVideo ? h264Supported && !h264Error : screenshotConnected
     if (selectedDevice && connected) {
-      console.log('屏幕连接已建立')
+      console.log('屏幕连接已建立', useVideo ? 'H264模式' : '截图模式')
     } else if (selectedDevice && !connected && readyState === 3) { // 3 = CLOSED
       console.log('屏幕连接已断开')
+      // 如果 H264 模式失败，自动切换到截图模式
+      if (useVideo && h264Error) {
+        console.log('H264 模式失败，自动切换到截图模式')
+        setUseVideo(false)
+      }
     }
   }, [selectedDevice, useVideo, h264Supported, h264Error, screenshotConnected, readyState])
   
