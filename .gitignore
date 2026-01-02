@@ -59,20 +59,64 @@ frontend/dist/
 frontend/build/
 backend/__pycache__/
 
-# Models
+# Models and large files
 models/
 *.safetensors
 *.bin
 *.pt
 *.pth
+*.ckpt
+*.h5
+*.pb
+*.onnx
+*.tflite
+*.mlmodel
 
 # Cache
 .cache/
 *.cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Temporary files
 *.tmp
 *.temp
+*.bak
+*~
 
-# External dependencies
+# External dependencies and reference projects
 Open-AutoGLM/
+auto-touch/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Media files (if large)
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Compressed files
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Test coverage
+.coverage
+htmlcov/
+coverage.xml
+*.cover

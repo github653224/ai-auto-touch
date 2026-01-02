@@ -17,9 +17,13 @@ import {
   Alert,
   Checkbox,
   Modal,
+  Badge,
+  Tag,
 } from 'antd'
-import { ArrowLeftOutlined, SendOutlined, ClearOutlined, BlockOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, SendOutlined, ClearOutlined, BlockOutlined, BugOutlined } from '@ant-design/icons'
 import { useWebSocketManager } from '../hooks/useWebSocketManager'
+import { useAILogsWebSocket } from '../hooks/useAILogsWebSocket'
+import AIConsole from '../components/AIConsole'
 import { RootState, AppDispatch } from '../store'
 import { selectDevice } from '../features/deviceSlice'
 import {
@@ -44,8 +48,13 @@ const AIControl = () => {
   const [batchModalVisible, setBatchModalVisible] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  // 使用全局WebSocket管理器（切换菜单时不会断开连接）
+  // 使用全局WebSocket管理器（截图模式，端点: /api/v1/ws/screen/{device_id}）
+  // 注意：这是截图模式的 WebSocket，与 H264 视频流模式（/api/v1/ws/h264/{device_id}）是独立的连接
+  // 即使断开 H264 连接，AI 控制页面仍然可以连接，因为它们使用不同的 WebSocket 端点
   const { lastMessage, isConnected } = useWebSocketManager(selectedDevice)
+
+  // 使用 AI 日志 WebSocket
+  const { logs: aiLogs, connected: aiLogsConnected, clearLogs: clearAILogs } = useAILogsWebSocket(selectedDevice)
 
   useEffect(() => {
     if (!lastMessage) return
@@ -116,6 +125,12 @@ const AIControl = () => {
       message.warning('请输入指令')
       return
     }
+
+    // 清空之前的 AI 日志
+    clearAILogs()
+
+    // 显示处理提示
+    message.info('正在处理指令，远程 AI 模型需要一些时间，请耐心等待...', 3)
 
     dispatch(
       executeNLCommand({
@@ -325,6 +340,15 @@ const AIControl = () => {
 
                       <div>
                         <Text strong>自然语言指令：</Text>
+                        {executing && (
+                          <Alert
+                            message="正在处理指令"
+                            description="远程 AI 模型正在分析指令并操作设备，通常需要 30 秒到 2 分钟，请耐心等待..."
+                            type="info"
+                            showIcon
+                            style={{ marginTop: 8, marginBottom: 8 }}
+                          />
+                        )}
                         <TextArea
                           placeholder="例如：打开小红书，搜索美食推荐，点赞第一个内容"
                           value={command}
@@ -364,6 +388,28 @@ const AIControl = () => {
                         </div>
                       )}
                     </Space>
+                  )
+                },
+                {
+                  key: 'ai-logs',
+                  label: (
+                    <span>
+                      <BugOutlined />
+                      AI 控制台
+                      {aiLogs.length > 0 && (
+                        <Badge count={aiLogs.length} size="small" style={{ marginLeft: 8 }} />
+                      )}
+                    </span>
+                  ),
+                  children: (
+                    <div style={{ height: 'calc(100vh - 200px)', minHeight: '400px' }}>
+                      <AIConsole
+                        logs={aiLogs}
+                        connected={aiLogsConnected}
+                        onClear={clearAILogs}
+                        deviceId={selectedDevice}
+                      />
+                    </div>
                   )
                 },
                 {

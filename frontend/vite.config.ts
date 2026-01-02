@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 3002,  // 更改端口为3002
     proxy: {
       '/api': {
         target: 'http://localhost:8001',  // 后端主服务端口
@@ -20,4 +20,3 @@ export default defineConfig({
     },
   },
 })
-

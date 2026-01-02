@@ -45,6 +45,7 @@ class WebSocketManager {
     try {
       console.log('正在连接WebSocket:', this.url)
       this.ws = new WebSocket(this.url)
+      this.ws.binaryType = 'blob' // 设置为 blob 模式，方便处理图片
 
       this.ws.onopen = () => {
         console.log('WebSocket连接已建立:', this.url)
@@ -54,6 +55,20 @@ class WebSocketManager {
 
       this.ws.onmessage = (event) => {
         try {
+          // 处理二进制数据（JPEG 图片）
+          if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
+            // 将二进制数据转换为 Blob URL
+            const blob = event.data instanceof Blob ? event.data : new Blob([event.data])
+            const url = URL.createObjectURL(blob)
+            this._notifyHandlers({
+              type: 'screenshot',
+              data: url,
+              isBinary: true
+            })
+            return
+          }
+          
+          // 处理 JSON 消息
           const data = JSON.parse(event.data)
           console.log('WebSocket收到消息:', data.type, data.frame ? `帧#${data.frame}` : '')
           this._notifyHandlers(data)
@@ -173,13 +188,17 @@ export function useWebSocketManager(deviceId: string | null) {
       wsManager.connect(url)
       setReadyState(wsManager.getReadyState())
     } else {
+      // 当 url 为 null 时（例如切换到 H264 模式），立即断开连接
+      // 这样可以避免在 H264 模式下继续接收截图模式的消息
       wsManager.disconnect()
       setReadyState(WebSocket.CLOSED)
     }
 
     return () => {
-      // 注意：这里不自动断开，让其他组件可以继续使用连接
-      // 只有在没有其他订阅者时才断开
+      // 组件卸载时，如果 url 为 null，确保断开连接
+      if (!url) {
+        wsManager.disconnect()
+      }
     }
   }, [url])
 

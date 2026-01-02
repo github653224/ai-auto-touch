@@ -1,5 +1,5 @@
 import { Layout, Menu, Typography, Divider } from 'antd'
-import { Routes, Route, Link, useNavigate } from 'react-router-dom'
+import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom'
 import { 
   MobileOutlined, 
   MonitorOutlined, 
@@ -12,12 +12,25 @@ import {
 import DeviceManager from './pages/DeviceManager'
 import ScreenDisplay from './pages/ScreenDisplay'
 import AIControl from './pages/AIControl'
+import OperationHistory from './pages/OperationHistory'
+import SystemSettings from './pages/SystemSettings'
 
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
 
 const App = () => {
   const navigate = useNavigate()
+  const location = useLocation()
+  
+  // 根据当前路由高亮菜单项
+  const getSelectedKey = () => {
+    if (location.pathname.startsWith('/screen')) return '/screen'
+    if (location.pathname.startsWith('/ai')) return '/ai'
+    if (location.pathname.startsWith('/history')) return '/history'
+    if (location.pathname.startsWith('/settings')) return '/settings'
+    return '/' // 默认选中设备管理
+  }
+  const selectedKey = getSelectedKey()
   
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -28,27 +41,38 @@ const App = () => {
         <Divider style={{ margin: 0 }} />
         <Menu
           mode="inline"
-          defaultSelectedKeys={['1']}
+          selectedKeys={[selectedKey]}
           onClick={({ key }) => {
             navigate(key)
           }}
-        >
-          <Menu.Item key="/" icon={<MobileOutlined />}>
-            <Link to="/">设备管理</Link>
-          </Menu.Item>
-          <Menu.Item key="/screen" icon={<MonitorOutlined />}>
-            <Link to="/screen">屏幕显示</Link>
-          </Menu.Item>
-          <Menu.Item key="/ai" icon={<RobotOutlined />}>
-            <Link to="/ai">AI智能控制</Link>
-          </Menu.Item>
-          <Menu.Item key="/history" icon={<HistoryOutlined />}>
-            <Link to="/history">操作历史</Link>
-          </Menu.Item>
-          <Menu.Item key="/settings" icon={<SettingOutlined />}>
-            <Link to="/settings">系统设置</Link>
-          </Menu.Item>
-        </Menu>
+          items={[
+            {
+              key: '/',
+              icon: <MobileOutlined />,
+              label: <Link to="/">设备管理</Link>,
+            },
+            {
+              key: '/screen',
+              icon: <MonitorOutlined />,
+              label: <Link to="/screen">屏幕显示</Link>,
+            },
+            {
+              key: '/ai',
+              icon: <RobotOutlined />,
+              label: <Link to="/ai">AI智能控制</Link>,
+            },
+            {
+              key: '/history',
+              icon: <HistoryOutlined />,
+              label: <Link to="/history">操作历史</Link>,
+            },
+            {
+              key: '/settings',
+              icon: <SettingOutlined />,
+              label: <Link to="/settings">系统设置</Link>,
+            },
+          ]}
+        />
       </Sider>
       <Layout style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Header style={{ background: '#fff', padding: '0 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', flexShrink: 0 }}>
@@ -67,8 +91,8 @@ const App = () => {
             <Route path="/" element={<DeviceManager />} />
             <Route path="/screen" element={<ScreenDisplay />} />
             <Route path="/ai" element={<AIControl />} />
-            <Route path="/history" element={<div>操作历史页面</div>} />
-            <Route path="/settings" element={<div>系统设置页面</div>} />
+            <Route path="/history" element={<OperationHistory />} />
+            <Route path="/settings" element={<SystemSettings />} />
           </Routes>
         </Content>
       </Layout>

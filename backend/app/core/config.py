@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # Open-AutoGLM配置
     AUTOGLM_BASE_URL: str = os.getenv("AUTOGLM_BASE_URL", "http://localhost:8000/v1")
     AUTOGLM_MODEL_NAME: str = os.getenv("AUTOGLM_MODEL_NAME", "autoglm-phone-9b")
+    AUTOGLM_API_KEY: str = os.getenv("AUTOGLM_API_KEY", "EMPTY")
     AUTOGLM_MAX_STEPS: int = int(os.getenv("AUTOGLM_MAX_STEPS", 100))
     
     # 设备配置

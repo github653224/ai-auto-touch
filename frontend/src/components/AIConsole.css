@@ -1,0 +1,318 @@
+/* AI 控制台样式 */
+.ai-console {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e1e1e;
+  border-radius: 8px;
+  overflow: hidden;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.ai-console-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  border-radius: 0;
+}
+
+/* 控制台头部 */
+.ai-console-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+  border-bottom: 1px solid #404040;
+  min-height: 40px;
+}
+
+.ai-console-title {
+  display: flex;
+  align-items: center;
+}
+
+.ai-console-icon {
+  font-size: 16px;
+  margin-right: 8px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.ai-console-controls {
+  display: flex;
+  align-items: center;
+}
+
+/* 控制台内容区域 */
+.ai-console-content {
+  flex: 1;
+  padding: 12px;
+  background: #1e1e1e;
+  color: #e0e0e0;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.4;
+  scrollbar-width: thin;
+  scrollbar-color: #404040 #1e1e1e;
+}
+
+.ai-console-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ai-console-content::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+.ai-console-content::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+.ai-console-content::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
+/* 空状态 */
+.ai-console-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  color: #8c8c8c;
+}
+
+.ai-console-welcome {
+  margin-top: 20px;
+  line-height: 1.6;
+}
+
+.ai-console-welcome div {
+  margin: 4px 0;
+}
+
+/* 日志行 */
+.ai-console-line {
+  margin-bottom: 4px;
+  padding: 2px 0;
+  word-wrap: break-word;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.ai-console-line:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
+/* 时间戳 */
+.ai-console-timestamp {
+  color: #666;
+  margin-right: 8px;
+  font-size: 11px;
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+/* 日志前缀 */
+.ai-console-prefix {
+  font-weight: bold;
+  margin-right: 8px;
+  flex-shrink: 0;
+  min-width: 50px;
+}
+
+/* 日志消息 */
+.ai-console-message {
+  flex: 1;
+  color: #e0e0e0;
+}
+
+/* 不同类型日志的样式 */
+.log-step .ai-console-message {
+  color: #91d5ff;
+}
+
+.log-request .ai-console-message {
+  color: #ffd591;
+}
+
+.log-response .ai-console-message {
+  color: #b7eb8f;
+}
+
+.log-action .ai-console-message {
+  color: #d3adf7;
+}
+
+.log-error .ai-console-message {
+  color: #ffccc7;
+  font-weight: 500;
+}
+
+.log-info .ai-console-message {
+  color: #d9d9d9;
+}
+
+/* 详细信息展开 */
+.ai-console-details {
+  width: 100%;
+  margin-top: 4px;
+  margin-left: 138px; /* 对齐消息内容 */
+}
+
+.ai-console-details summary {
+  color: #8c8c8c;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+
+.ai-console-details summary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ai-console-data {
+  background: #262626;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #d9d9d9;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* 当前提示符 */
+.ai-console-current {
+  margin-top: 8px;
+  border-top: 1px solid #404040;
+  padding-top: 8px;
+}
+
+.ai-console-prompt {
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+/* 光标动画 */
+.ai-console-cursor {
+  color: #52c41a;
+  animation: blink 1s infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* 滚动指示器 */
+.ai-console-scroll-indicator {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 10;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .ai-console-header {
+    padding: 6px 12px;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .ai-console-content {
+    padding: 8px;
+    font-size: 12px;
+  }
+  
+  .ai-console-timestamp {
+    min-width: 70px;
+    font-size: 10px;
+  }
+  
+  .ai-console-prefix {
+    min-width: 45px;
+    font-size: 11px;
+  }
+  
+  .ai-console-details {
+    margin-left: 115px;
+  }
+}
+
+/* 深色主题优化 */
+@media (prefers-color-scheme: dark) {
+  .ai-console {
+    background: #0d1117;
+  }
+  
+  .ai-console-header {
+    background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+    border-bottom-color: #30363d;
+  }
+  
+  .ai-console-content {
+    background: #0d1117;
+    color: #f0f6fc;
+  }
+  
+  .ai-console-content::-webkit-scrollbar-track {
+    background: #0d1117;
+  }
+  
+  .ai-console-content::-webkit-scrollbar-thumb {
+    background: #30363d;
+  }
+  
+  .ai-console-data {
+    background: #161b22;
+    border-color: #30363d;
+    color: #f0f6fc;
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .ai-console {
+    background: white !important;
+    color: black !important;
+    box-shadow: none;
+  }
+  
+  .ai-console-header {
+    background: #f5f5f5 !important;
+    color: black !important;
+  }
+  
+  .ai-console-content {
+    background: white !important;
+    color: black !important;
+  }
+  
+  .ai-console-cursor {
+    display: none;
+  }
+}
