@@ -1,10 +1,10 @@
-群控手机平台 - 智能Android设备管理系统
+AI 驱动设备自动化平台 - 智能Android设备管理系统
 
 ![项目LOGO](https://via.placeholder.com/400x100?text=Phone+Control+Platform)  
 
 项目概述
 
-本项目是一款基于 FastAPI + React + Open-AutoGLM 开发的智能群控手机平台，核心功能是通过自然语言指令实现多台Android设备的批量管理与自动化操作，集成低延迟屏幕镜像、设备状态监控等能力，适用于自动化测试、批量运维、场景化操作等场景。
+本项目是一款基于 FastAPI + React + Open-AutoGLM 开发的 AI 驱动设备自动化平台，核心功能是通过自然语言指令实现多台Android设备的批量管理与自动化操作，集成低延迟屏幕镜像、设备状态监控等能力，适用于自动化测试、批量运维、场景化操作等场景。
 
 核心优势
 
@@ -12,7 +12,7 @@
 
 - 低延迟屏幕流：基于scrcpy实现<50ms延迟的实时屏幕显示，支持多设备同时预览
 
-- 多设备群控：支持100+设备同时在线管理，批量执行指令或个性化操作
+- 多设备协同：支持100+设备同时在线管理，批量执行指令或个性化操作
 
 - 全平台兼容：后端支持Linux/macOS/Windows，前端支持Web/桌面/移动端访问
 
@@ -588,7 +588,7 @@ python -m phone_agent.finetune --data-path ./data/your-data.json --model-path ./
 
 MIT License
 
-Copyright (c) 2024 群控手机平台开发团队
+Copyright (c) 2024 AI 驱动设备自动化平台开发团队
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

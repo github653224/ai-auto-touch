@@ -37,7 +37,7 @@ app.include_router(ai_websocket_api.router, prefix=settings.API_V1_STR + "/ws", 
 @app.get("/")
 async def root():
     return {
-        "message": "群控手机平台 API 服务",
+        "message": "AI 驱动设备自动化平台 API 服务",
         "docs_url": "/docs",
         "version": settings.VERSION
     }

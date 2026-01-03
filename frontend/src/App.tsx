@@ -36,7 +36,7 @@ const App = () => {
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
       <Sider width={200} theme="light">
         <div style={{ padding: '16px', textAlign: 'center' }}>
-          <Title level={4}>群控手机平台</Title>
+          <Title level={4}>AI 自动化平台</Title>
         </div>
         <Divider style={{ margin: 0 }} />
         <Menu
@@ -77,7 +77,7 @@ const App = () => {
       <Layout style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Header style={{ background: '#fff', padding: '0 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', flexShrink: 0 }}>
           <Title level={5} style={{ margin: 0, lineHeight: '64px' }}>
-            智能群控系统
+            AI 驱动设备自动化平台
           </Title>
         </Header>
         <Content style={{ 

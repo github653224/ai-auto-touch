@@ -6,7 +6,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     # 项目基本配置
-    PROJECT_NAME: str = "群控手机平台"
+    PROJECT_NAME: str = "AI 驱动设备自动化平台"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     HOST: str = os.getenv("HOST", "0.0.0.0")
