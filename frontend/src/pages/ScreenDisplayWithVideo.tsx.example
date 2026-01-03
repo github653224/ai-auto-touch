@@ -1,0 +1,326 @@
+/**
+ * 屏幕显示页面 - 集成视频流模式示例
+ * 
+ * 这个文件展示了如何在现有的 ScreenDisplay 页面中集成视频流功能
+ * 可以参考这个示例来修改你的 ScreenDisplay.tsx
+ */
+
+import { useEffect, useRef, useState } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { RootState, AppDispatch } from '../store'
+import { selectDevice } from '../features/deviceSlice'
+import { 
+  Card, 
+  Select, 
+  Button, 
+  Row, 
+  Col, 
+  Typography, 
+  Spin, 
+  Slider,
+  message,
+  Space,
+  Tag,
+  Switch,
+  Divider,
+} from 'antd'
+import { 
+  ArrowLeftOutlined,
+  FullscreenOutlined,
+  ThunderboltOutlined,
+  CameraOutlined,
+} from '@ant-design/icons'
+import { useNavigate } from 'react-router-dom'
+import { ScrcpyPlayer } from '../components/ScrcpyPlayer'
+import { useWebSocketManager } from '../hooks/useWebSocketManager'
+
+const { Text, Title } = Typography
+
+const ScreenDisplayWithVideo = () => {
+  const dispatch = useDispatch<AppDispatch>()
+  const navigate = useNavigate()
+  const { devices, selectedDevice } = useSelector((state: RootState) => state.devices)
+  
+  // 显示模式：'screenshot' 或 'video'
+  const [displayMode, setDisplayMode] = useState<'screenshot' | 'video'>('video')
+  const [quality, setQuality] = useState(4) // 视频质量(1-8 Mbps)
+  const [resolution, setResolution] = useState(1080) // 分辨率
+  
+  // 截图模式的 WebSocket 连接
+  const { lastMessage, readyState, isConnected: screenshotConnected } = useWebSocketManager(
+    displayMode === 'screenshot' ? selectedDevice : null
+  )
+  
+  // 检查浏览器是否支持 WebCodecs
+  const isWebCodecsSupported = () => {
+    return typeof window !== 'undefined' && 'VideoDecoder' in window
+  }
+  
+  // 如果浏览器不支持 WebCodecs，自动切换到截图模式
+  useEffect(() => {
+    if (!isWebCodecsSupported() && displayMode === 'video') {
+      message.warning('当前浏览器不支持视频流模式，已自动切换到截图模式')
+      setDisplayMode('screenshot')
+    }
+  }, [displayMode])
+  
+  // 处理截图流
+  useEffect(() => {
+    if (displayMode !== 'screenshot' || !lastMessage) return
+    
+    try {
+      const data = lastMessage
+      if (data.type === 'screenshot' && data.data) {
+        const container = document.getElementById('screenshot-container')
+        if (!container) return
+        
+        let img = container.querySelector('img') as HTMLImageElement
+        if (!img) {
+          img = document.createElement('img')
+          img.style.width = '100%'
+          img.style.height = '100%'
+          img.style.objectFit = 'contain'
+          container.appendChild(img)
+        }
+        
+        if (img.src && img.src.startsWith('blob:')) {
+          URL.revokeObjectURL(img.src)
+        }
+        img.src = data.data
+      }
+    } catch (e) {
+      console.error('处理截图失败:', e)
+    }
+  }, [lastMessage, displayMode])
+  
+  // 切换显示模式
+  const handleModeChange = (checked: boolean) => {
+    const newMode = checked ? 'video' : 'screenshot'
+    
+    if (newMode === 'video' && !isWebCodecsSupported()) {
+      message.error('当前浏览器不支持视频流模式，请使用 Chrome 94+ 或 Edge 94+')
+      return
+    }
+    
+    setDisplayMode(newMode)
+    message.success(`已切换到${newMode === 'video' ? '视频流' : '截图'}模式`)
+  }
+  
+  // 设备选项
+  const deviceOptions = devices.map(device => ({
+    label: `${device.device_id} (${device.name || '未知设备'})`,
+    value: device.device_id
+  }))
+  
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Card 
+        styles={{ body: { padding: '0', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
+        style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+        variant="borderless"
+      >
+        {/* 顶部标题栏 */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          padding: '0px 16px',
+          borderBottom: '1px solid #f0f0f0'
+        }}>
+          <Title level={4} style={{ margin: 0 }}>实时屏幕显示</Title>
+          <Space>
+            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/')}>
+              返回设备列表
+            </Button>
+          </Space>
+        </div>
+        
+        <Row gutter={0} style={{ marginTop: 0, flex: 1, overflow: 'hidden' }}>
+          {/* 左侧：实时屏幕预览 */}
+          <Col xs={24} lg={16} style={{ paddingRight: 12, display: 'flex', alignItems: 'stretch', height: '100%' }}>
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '16px' }}>
+              <div
+                style={{
+                  width: '100%',
+                  maxWidth: 500,
+                  aspectRatio: '9 / 19.5',
+                  borderRadius: 28,
+                  padding: 8,
+                  background: '#1f1f1f',
+                  boxShadow: '0 12px 28px rgba(0,0,0,0.25)',
+                  border: '4px solid #2d2d2d',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: 20,
+                    overflow: 'hidden',
+                    backgroundColor: '#000',
+                    position: 'relative',
+                  }}
+                >
+                  {/* 视频流模式 */}
+                  {displayMode === 'video' && selectedDevice && (
+                    <ScrcpyPlayer
+                      deviceId={selectedDevice}
+                      maxSize={resolution}
+                      bitRate={quality * 1_000_000}
+                      onReady={() => message.success('视频流已连接')}
+                      onError={(err) => message.error(`视频流错误: ${err}`)}
+                    />
+                  )}
+                  
+                  {/* 截图模式 */}
+                  {displayMode === 'screenshot' && (
+                    <div 
+                      id="screenshot-container"
+                      style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      {!selectedDevice && (
+                        <Text style={{ color: '#fff' }}>请选择设备</Text>
+                      )}
+                      {selectedDevice && readyState !== 1 && (
+                        <Spin size="large" />
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* 模式标签 */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      padding: '4px 8px',
+                      background: 'rgba(0,0,0,0.6)',
+                      borderRadius: 4,
+                    }}
+                  >
+                    <Tag color={displayMode === 'video' ? 'blue' : 'green'} style={{ margin: 0 }}>
+                      {displayMode === 'video' ? '视频流' : '截图模式'}
+                    </Tag>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Col>
+
+          {/* 右侧：控制区域 */}
+          <Col xs={24} lg={8} style={{ paddingLeft: 12, borderLeft: '1px solid #e8e8e8', height: '100%', overflow: 'auto' }}>
+            <div style={{ padding: '16px' }}>
+              {/* 设备选择 */}
+              <Typography.Title level={5} style={{ marginTop: 0 }}>设备选择</Typography.Title>
+              <Select
+                value={selectedDevice}
+                onChange={(value) => dispatch(selectDevice(value))}
+                options={deviceOptions}
+                style={{ width: '100%', marginBottom: 16 }}
+                placeholder="请选择设备"
+              />
+
+              <Divider />
+
+              {/* 显示模式切换 */}
+              <Typography.Title level={5}>显示模式</Typography.Title>
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Space>
+                    <CameraOutlined />
+                    <Text>截图模式</Text>
+                  </Space>
+                  <Switch
+                    checked={displayMode === 'video'}
+                    onChange={handleModeChange}
+                    checkedChildren={<ThunderboltOutlined />}
+                    unCheckedChildren={<CameraOutlined />}
+                    disabled={!isWebCodecsSupported()}
+                  />
+                  <Space>
+                    <ThunderboltOutlined />
+                    <Text>视频流</Text>
+                  </Space>
+                </div>
+                
+                {!isWebCodecsSupported() && (
+                  <Text type="warning" style={{ fontSize: 12 }}>
+                    当前浏览器不支持视频流模式，请使用 Chrome 94+ 或 Edge 94+
+                  </Text>
+                )}
+                
+                <div style={{ padding: 8, background: '#f5f5f5', borderRadius: 4 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {displayMode === 'video' ? (
+                      <>
+                        <strong>视频流模式</strong>: 延迟 30-100ms，帧率 20-30 FPS，硬件加速
+                      </>
+                    ) : (
+                      <>
+                        <strong>截图模式</strong>: 延迟 100-300ms，帧率 10-20 FPS，兼容所有浏览器
+                      </>
+                    )}
+                  </Text>
+                </div>
+              </Space>
+
+              <Divider />
+
+              {/* 画质设置 */}
+              <Typography.Title level={5}>画质设置</Typography.Title>
+              <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <div>
+                  <Text strong>视频质量：</Text>
+                  <Text>{quality} Mbps</Text>
+                  <Slider 
+                    min={1} 
+                    max={8} 
+                    value={quality} 
+                    onChange={setQuality}
+                    step={1}
+                    marks={{
+                      1: '省流',
+                      4: '标准',
+                      8: '高清'
+                    }}
+                    style={{ marginTop: 8 }}
+                  />
+                </div>
+                
+                <div>
+                  <Text strong>分辨率：</Text>
+                  <Text>{resolution}p</Text>
+                  <Slider 
+                    min={480} 
+                    max={1920} 
+                    value={resolution} 
+                    onChange={setResolution}
+                    step={null}
+                    marks={{
+                      480: '480p',
+                      720: '720p',
+                      1080: '1080p',
+                      1920: '1080p+'
+                    }}
+                    style={{ marginTop: 8 }}
+                  />
+                </div>
+                
+                <div style={{ padding: 8, background: '#e6f7ff', borderRadius: 4, border: '1px solid #91d5ff' }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    💡 提示：降低质量和分辨率可以减少延迟和带宽占用
+                  </Text>
+                </div>
+              </Space>
+            </div>
+          </Col>
+        </Row>
+      </Card>
+    </div>
+  )
+}
+
+export default ScreenDisplayWithVideo

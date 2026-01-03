@@ -6,6 +6,7 @@ from app.services.ai_service import AIService
 from app.utils.logger_utils import logger
 import json
 import asyncio
+import time
 from typing import Dict
 
 router = APIRouter()
@@ -75,17 +76,20 @@ async def broadcast_ai_log(device_id: str, log_type: str, message: str, data: di
                 "log_type": log_type,  # info, step, model_request, model_response, action, error
                 "message": message,
                 "device_id": device_id,
-                "timestamp": asyncio.get_event_loop().time(),
+                "timestamp": int(time.time() * 1000),  # 毫秒级时间戳
                 "data": data or {}
             }
             
             await websocket.send_json(log_data)
+            logger.debug(f"✅ 已广播 AI 日志到设备 {device_id}: [{log_type}] {message}")
             
         except Exception as e:
             logger.warning(f"发送 AI 日志失败: {str(e)}")
             # 连接可能已断开，清理
             if connection_key in active_connections:
                 del active_connections[connection_key]
+    else:
+        logger.debug(f"⚠️ 设备 {device_id} 没有活跃的 AI 日志 WebSocket 连接")
 
 # 导出广播函数供其他模块使用
 __all__ = ["router", "broadcast_ai_log"]

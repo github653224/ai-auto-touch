@@ -86,8 +86,8 @@ models/
 *~
 
 # External dependencies and reference projects
-Open-AutoGLM/
 auto-touch/
+AutoGLM-GUI/
 
 # Database
 *.db

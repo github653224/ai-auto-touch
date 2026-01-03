@@ -2,6 +2,7 @@
 手机控制 API
 提供手机控制的 HTTP 接口
 """
+import asyncio
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -54,10 +55,15 @@ class ScrollRequest(BaseModel):
 async def tap(device_id: str, request: TapRequest):
     """点击屏幕指定位置"""
     try:
-        result = await phone_control_service.tap(device_id, request.x, request.y)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        # 创建后台任务，不等待完成
+        asyncio.create_task(phone_control_service.tap(device_id, request.x, request.y))
+        # 立即返回，不阻塞
+        return {
+            "success": True,
+            "action": "tap",
+            "coordinates": {"x": request.x, "y": request.y},
+            "message": f"点击命令已发送 ({request.x}, {request.y})"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -66,17 +72,19 @@ async def tap(device_id: str, request: TapRequest):
 async def swipe(device_id: str, request: SwipeRequest):
     """滑动屏幕"""
     try:
-        result = await phone_control_service.swipe(
+        asyncio.create_task(phone_control_service.swipe(
             device_id, 
             request.x1, 
             request.y1, 
             request.x2, 
             request.y2, 
             request.duration
-        )
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        ))
+        return {
+            "success": True,
+            "action": "swipe",
+            "message": "滑动命令已发送"
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -104,10 +112,8 @@ async def long_press(device_id: str, request: LongPressRequest):
 async def input_text(device_id: str, request: TextInputRequest):
     """输入文本"""
     try:
-        result = await phone_control_service.input_text(device_id, request.text)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.input_text(device_id, request.text))
+        return {"success": True, "action": "input_text", "message": "文本输入命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -116,10 +122,8 @@ async def input_text(device_id: str, request: TextInputRequest):
 async def clear_text(device_id: str, count: int = 100):
     """清除文本"""
     try:
-        result = await phone_control_service.clear_text(device_id, count)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.clear_text(device_id, count))
+        return {"success": True, "action": "clear_text", "message": "清除文本命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -142,10 +146,8 @@ async def press_key(device_id: str, request: KeyPressRequest):
 async def press_home(device_id: str):
     """按下Home键"""
     try:
-        result = await phone_control_service.press_home(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.press_home(device_id))
+        return {"success": True, "action": "press_home", "message": "Home键命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -154,10 +156,8 @@ async def press_home(device_id: str):
 async def press_back(device_id: str):
     """按下返回键"""
     try:
-        result = await phone_control_service.press_back(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.press_back(device_id))
+        return {"success": True, "action": "press_back", "message": "返回键命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -166,10 +166,8 @@ async def press_back(device_id: str):
 async def press_menu(device_id: str):
     """按下菜单键"""
     try:
-        result = await phone_control_service.press_menu(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.press_menu(device_id))
+        return {"success": True, "action": "press_menu", "message": "菜单键命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -178,10 +176,8 @@ async def press_menu(device_id: str):
 async def press_power(device_id: str):
     """按下电源键"""
     try:
-        result = await phone_control_service.press_power(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.press_power(device_id))
+        return {"success": True, "action": "press_power", "message": "电源键命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -190,10 +186,8 @@ async def press_power(device_id: str):
 async def press_volume_up(device_id: str):
     """按下音量+键"""
     try:
-        result = await phone_control_service.press_volume_up(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.press_volume_up(device_id))
+        return {"success": True, "action": "press_volume_up", "message": "音量+键命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -202,10 +196,8 @@ async def press_volume_up(device_id: str):
 async def press_volume_down(device_id: str):
     """按下音量-键"""
     try:
-        result = await phone_control_service.press_volume_down(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.press_volume_down(device_id))
+        return {"success": True, "action": "press_volume_down", "message": "音量-键命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -214,10 +206,8 @@ async def press_volume_down(device_id: str):
 async def press_enter(device_id: str):
     """按下回车键"""
     try:
-        result = await phone_control_service.press_enter(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.press_enter(device_id))
+        return {"success": True, "action": "press_enter", "message": "回车键命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -226,10 +216,8 @@ async def press_enter(device_id: str):
 async def press_app_switch(device_id: str):
     """按下应用切换键（最近任务）"""
     try:
-        result = await phone_control_service.press_app_switch(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.press_app_switch(device_id))
+        return {"success": True, "action": "press_app_switch", "message": "应用切换键命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -344,10 +332,8 @@ async def get_current_app(device_id: str):
 async def scroll_up(device_id: str, request: ScrollRequest):
     """向上滚动"""
     try:
-        result = await phone_control_service.scroll_up(device_id, request.distance)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.scroll_up(device_id, request.distance))
+        return {"success": True, "action": "scroll_up", "message": "向上滚动命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -356,10 +342,8 @@ async def scroll_up(device_id: str, request: ScrollRequest):
 async def scroll_down(device_id: str, request: ScrollRequest):
     """向下滚动"""
     try:
-        result = await phone_control_service.scroll_down(device_id, request.distance)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.scroll_down(device_id, request.distance))
+        return {"success": True, "action": "scroll_down", "message": "向下滚动命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -368,10 +352,8 @@ async def scroll_down(device_id: str, request: ScrollRequest):
 async def scroll_left(device_id: str, request: ScrollRequest):
     """向左滚动"""
     try:
-        result = await phone_control_service.scroll_left(device_id, request.distance)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.scroll_left(device_id, request.distance))
+        return {"success": True, "action": "scroll_left", "message": "向左滚动命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -380,10 +362,8 @@ async def scroll_left(device_id: str, request: ScrollRequest):
 async def scroll_right(device_id: str, request: ScrollRequest):
     """向右滚动"""
     try:
-        result = await phone_control_service.scroll_right(device_id, request.distance)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.scroll_right(device_id, request.distance))
+        return {"success": True, "action": "scroll_right", "message": "向右滚动命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -394,10 +374,8 @@ async def scroll_right(device_id: str, request: ScrollRequest):
 async def unlock_screen(device_id: str):
     """解锁屏幕"""
     try:
-        result = await phone_control_service.unlock_screen(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.unlock_screen(device_id))
+        return {"success": True, "action": "unlock_screen", "message": "解锁屏幕命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -406,10 +384,8 @@ async def unlock_screen(device_id: str):
 async def open_notification(device_id: str):
     """打开通知栏"""
     try:
-        result = await phone_control_service.open_notification(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.open_notification(device_id))
+        return {"success": True, "action": "open_notification", "message": "打开通知栏命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -418,10 +394,8 @@ async def open_notification(device_id: str):
 async def open_quick_settings(device_id: str):
     """打开快捷设置"""
     try:
-        result = await phone_control_service.open_quick_settings(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.open_quick_settings(device_id))
+        return {"success": True, "action": "open_quick_settings", "message": "打开快捷设置命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -430,9 +404,7 @@ async def open_quick_settings(device_id: str):
 async def close_notification(device_id: str):
     """关闭通知栏"""
     try:
-        result = await phone_control_service.close_notification(device_id)
-        if not result.get("success"):
-            raise HTTPException(status_code=500, detail=result.get("error", "操作失败"))
-        return result
+        asyncio.create_task(phone_control_service.close_notification(device_id))
+        return {"success": True, "action": "close_notification", "message": "关闭通知栏命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

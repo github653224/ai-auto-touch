@@ -27,7 +27,11 @@ class PhoneControlService:
             y: Y坐标
         """
         try:
-            result = await run_adb_command(f"-s {device_id} shell input tap {x} {y}")
+            # 使用 motionevent 代替 tap，更快速
+            # 不等待命令完成，避免阻塞视频流
+            await run_adb_command(f"-s {device_id} shell input motionevent DOWN {x} {y}", wait=False)
+            await asyncio.sleep(0.01)  # 短暂延迟
+            await run_adb_command(f"-s {device_id} shell input motionevent UP {x} {y}", wait=False)
             logger.info(f"设备 {device_id}: 点击坐标 ({x}, {y})")
             return {
                 "success": True,
@@ -62,8 +66,10 @@ class PhoneControlService:
             duration: 滑动持续时间（毫秒）
         """
         try:
-            result = await run_adb_command(
-                f"-s {device_id} shell input swipe {x1} {y1} {x2} {y2} {duration}"
+            # 不等待命令完成，避免阻塞视频流
+            await run_adb_command(
+                f"-s {device_id} shell input swipe {x1} {y1} {x2} {y2} {duration}",
+                wait=False
             )
             logger.info(f"设备 {device_id}: 滑动 ({x1},{y1}) -> ({x2},{y2}), 持续 {duration}ms")
             return {
@@ -99,8 +105,10 @@ class PhoneControlService:
         """
         try:
             # 长按实际上是一个起点和终点相同的滑动
-            result = await run_adb_command(
-                f"-s {device_id} shell input swipe {x} {y} {x} {y} {duration}"
+            # 不等待命令完成，避免阻塞视频流
+            await run_adb_command(
+                f"-s {device_id} shell input swipe {x} {y} {x} {y} {duration}",
+                wait=False
             )
             logger.info(f"设备 {device_id}: 长按坐标 ({x}, {y}), 持续 {duration}ms")
             return {
@@ -131,8 +139,10 @@ class PhoneControlService:
         try:
             # 转义特殊字符
             escaped_text = text.replace(' ', '%s').replace('&', '\\&')
-            result = await run_adb_command(
-                f"-s {device_id} shell input text \"{escaped_text}\""
+            # 不等待命令完成，避免阻塞视频流
+            await run_adb_command(
+                f"-s {device_id} shell input text \"{escaped_text}\"",
+                wait=False
             )
             logger.info(f"设备 {device_id}: 输入文本 '{text}'")
             return {
@@ -158,8 +168,9 @@ class PhoneControlService:
             count: 删除次数
         """
         try:
-            for _ in range(count):
-                await run_adb_command(f"-s {device_id} shell input keyevent KEYCODE_DEL")
+            # 不等待命令完成，避免阻塞视频流
+            for _ in range(min(count, 50)):  # 限制最多50次，避免过长
+                await run_adb_command(f"-s {device_id} shell input keyevent KEYCODE_DEL", wait=False)
             logger.info(f"设备 {device_id}: 清除文本 {count} 次")
             return {
                 "success": True,
@@ -186,8 +197,10 @@ class PhoneControlService:
             keycode: 按键代码（如 KEYCODE_HOME, KEYCODE_BACK 等）
         """
         try:
-            result = await run_adb_command(
-                f"-s {device_id} shell input keyevent {keycode}"
+            # 不等待命令完成，避免阻塞视频流
+            await run_adb_command(
+                f"-s {device_id} shell input keyevent {keycode}",
+                wait=False
             )
             logger.info(f"设备 {device_id}: 按下按键 {keycode}")
             return {
@@ -549,8 +562,10 @@ class PhoneControlService:
     async def open_notification(self, device_id: str) -> Dict[str, Any]:
         """打开通知栏"""
         try:
-            result = await run_adb_command(
-                f"-s {device_id} shell cmd statusbar expand-notifications"
+            # 不等待命令完成，避免阻塞视频流
+            await run_adb_command(
+                f"-s {device_id} shell cmd statusbar expand-notifications",
+                wait=False
             )
             logger.info(f"设备 {device_id}: 打开通知栏")
             return {
@@ -569,8 +584,10 @@ class PhoneControlService:
     async def open_quick_settings(self, device_id: str) -> Dict[str, Any]:
         """打开快捷设置"""
         try:
-            result = await run_adb_command(
-                f"-s {device_id} shell cmd statusbar expand-settings"
+            # 不等待命令完成，避免阻塞视频流
+            await run_adb_command(
+                f"-s {device_id} shell cmd statusbar expand-settings",
+                wait=False
             )
             logger.info(f"设备 {device_id}: 打开快捷设置")
             return {
@@ -589,8 +606,10 @@ class PhoneControlService:
     async def close_notification(self, device_id: str) -> Dict[str, Any]:
         """关闭通知栏"""
         try:
-            result = await run_adb_command(
-                f"-s {device_id} shell cmd statusbar collapse"
+            # 不等待命令完成，避免阻塞视频流
+            await run_adb_command(
+                f"-s {device_id} shell cmd statusbar collapse",
+                wait=False
             )
             logger.info(f"设备 {device_id}: 关闭通知栏")
             return {

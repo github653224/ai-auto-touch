@@ -90,6 +90,8 @@ export function useAILogsWebSocket(deviceId: string | null): UseAILogsWebSocketR
         try {
           const message: AILogMessage = JSON.parse(event.data)
           
+          console.log('📨 收到 AI 日志消息:', message)
+          
           if (message.type === 'ai_log' && message.log_type && message.message) {
             const logEntry: AILogEntry = {
               id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -99,12 +101,17 @@ export function useAILogsWebSocket(deviceId: string | null): UseAILogsWebSocketR
               data: message.data
             }
             
+            console.log('✅ 添加日志条目:', logEntry)
             addLog(logEntry)
           } else if (message.type === 'connected') {
             console.log('AI 日志连接确认:', message.message)
+          } else if (message.type === 'heartbeat' || message.type === 'pong') {
+            // 心跳消息，不需要处理
+          } else {
+            console.log('收到其他类型消息:', message)
           }
         } catch (e) {
-          console.warn('解析 AI 日志消息失败:', e)
+          console.warn('解析 AI 日志消息失败:', e, event.data)
         }
       }
 

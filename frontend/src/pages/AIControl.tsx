@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -21,9 +21,9 @@ import {
   Tag,
 } from 'antd'
 import { ArrowLeftOutlined, SendOutlined, ClearOutlined, BlockOutlined, BugOutlined } from '@ant-design/icons'
-import { useWebSocketManager } from '../hooks/useWebSocketManager'
 import { useAILogsWebSocket } from '../hooks/useAILogsWebSocket'
 import AIConsole from '../components/AIConsole'
+import { ScrcpyPlayer } from '../components/ScrcpyPlayer'
 import { RootState, AppDispatch } from '../store'
 import { selectDevice } from '../features/deviceSlice'
 import {
@@ -46,64 +46,19 @@ const AIControl = () => {
   const [batchCommands, setBatchCommands] = useState('')
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
   const [batchModalVisible, setBatchModalVisible] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
-
-  // 使用全局WebSocket管理器（截图模式，端点: /api/v1/ws/screen/{device_id}）
-  // 注意：这是截图模式的 WebSocket，与 H264 视频流模式（/api/v1/ws/h264/{device_id}）是独立的连接
-  // 即使断开 H264 连接，AI 控制页面仍然可以连接，因为它们使用不同的 WebSocket 端点
-  const { lastMessage, isConnected } = useWebSocketManager(selectedDevice)
+  
+  // 使用 useCallback 包装回调函数，避免重新渲染时重新连接
+  const handleVideoReady = useCallback(() => {
+    console.log('AI控制页面：视频流已连接')
+  }, [])
+  
+  const handleVideoError = useCallback((err: string) => {
+    console.error('AI控制页面：视频流错误:', err)
+    message.error(`视频流错误: ${err}`)
+  }, [])
 
   // 使用 AI 日志 WebSocket
   const { logs: aiLogs, connected: aiLogsConnected, clearLogs: clearAILogs } = useAILogsWebSocket(selectedDevice)
-
-  useEffect(() => {
-    if (!lastMessage) return
-    
-    try {
-      // lastMessage 已经是解析后的对象（从 useWebSocketManager 返回）
-      // 格式: {type: 'screenshot', data: 'data:image/png;base64,...', frame: 2}
-      const data = lastMessage
-      
-      if (data.type === 'screenshot' && data.data) {
-        console.log(`AI控制页面收到截图帧 #${data.frame}`)
-        
-        // 使用ID选择器查找容器元素（更可靠）
-        const container = document.getElementById('ai-screen-container')
-        if (!container) {
-          console.warn('❌ 找不到屏幕容器元素 #ai-screen-container')
-          return
-        }
-        
-        // 查找或创建img元素
-        let img = container.querySelector('img') as HTMLImageElement
-        if (!img) {
-          console.log('创建新的img元素')
-          img = document.createElement('img')
-          img.style.width = '100%'
-          img.style.height = '100%'
-          img.style.objectFit = 'contain'
-          img.style.display = 'block'
-          img.style.maxWidth = '100%'
-          img.style.maxHeight = '100%'
-          container.appendChild(img)
-        }
-        
-        // 更新图片源
-        img.src = data.data
-        img.onerror = (e) => {
-          console.error('❌ AI控制页面图片加载失败:', e)
-        }
-        img.onload = () => {
-          console.log('✅ AI控制页面图片加载成功，尺寸:', img.naturalWidth, 'x', img.naturalHeight)
-        }
-      } else if (data.type === 'error') {
-        console.error('屏幕流错误:', data.message)
-        message.error(`屏幕流错误: ${data.message}`)
-      }
-    } catch (e) {
-      console.error('处理屏幕数据失败:', e, lastMessage)
-    }
-  }, [lastMessage])
 
   useEffect(() => {
     if (error) {
@@ -253,7 +208,6 @@ const AIControl = () => {
                 }}
               >
                 <div
-                  id="ai-screen-container"
                   style={{
                     width: '100%',
                     height: '100%',
@@ -266,50 +220,18 @@ const AIControl = () => {
                     position: 'relative',
                   }}
                 >
-                  {!selectedDevice ? (
+                  {selectedDevice ? (
+                    <ScrcpyPlayer
+                      deviceId={selectedDevice}
+                      maxSize={1080}
+                      bitRate={4_000_000}
+                      onReady={handleVideoReady}
+                      onError={handleVideoError}
+                    />
+                  ) : (
                     <Text type="warning" style={{ color: '#fff' }}>
                       请选择设备以查看实时画面
                     </Text>
-                  ) : !isConnected ? (
-                    <Text type="secondary" style={{ color: '#999' }}>
-                      正在建立屏幕连接...
-                    </Text>
-                  ) : (
-                    <>
-                      <video
-                        ref={videoRef}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'contain',
-                          display: 'none', // 隐藏video，使用img显示截图
-                        }}
-                        autoPlay
-                        muted
-                        playsInline
-                      />
-                      {/* 截图会通过useEffect动态添加到这个容器 */}
-                    </>
-                  )}
-                  {selectedDevice && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        padding: '4px 8px',
-                        background: 'rgba(0,0,0,0.6)',
-                        borderRadius: 4,
-                        fontSize: 12,
-                      }}
-                    >
-                      <Text
-                        type={isConnected ? 'success' : 'danger'}
-                        style={{ color: isConnected ? '#52c41a' : '#ff4d4f', fontSize: 12 }}
-                      >
-                        {isConnected ? '已连接' : '未连接'}
-                      </Text>
-                    </div>
                   )}
                 </div>
               </div>

@@ -39,15 +39,21 @@ class CommandResult:
         self.stderr = stderr
         self.returncode = returncode
 
-async def run_adb_command(command: str, timeout: int = 30) -> CommandResult:
-    """执行ADB命令"""
+async def run_adb_command(command: str, timeout: int = 30, wait: bool = True) -> CommandResult:
+    """执行ADB命令
+    
+    Args:
+        command: ADB命令（不包含 adb 本身）
+        timeout: 超时时间（秒）
+        wait: 是否等待命令完成（False 时立即返回，用于控制命令）
+    """
     try:
         # 获取ADB路径
         adb_path = get_adb_path()
         
         # 构建完整命令
         cmd = f"{adb_path} {command}"
-        logger.info(f"执行ADB命令: {cmd}")
+        logger.debug(f"执行ADB命令: {cmd}")
         
         # 执行命令（使用列表形式，更安全）
         cmd_parts = [adb_path] + command.split()
@@ -58,6 +64,11 @@ async def run_adb_command(command: str, timeout: int = 30) -> CommandResult:
             env=os.environ.copy()  # 确保环境变量正确传递
         )
         
+        # 如果不等待，立即返回
+        if not wait:
+            logger.debug(f"ADB命令已启动（不等待完成）: {cmd}")
+            return CommandResult(stdout="", stderr="", returncode=0)
+        
         # 等待命令完成
         stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
         
@@ -65,7 +76,7 @@ async def run_adb_command(command: str, timeout: int = 30) -> CommandResult:
         stdout_str = stdout.decode('utf-8', errors='ignore') if stdout else ""
         stderr_str = stderr.decode('utf-8', errors='ignore') if stderr else ""
         
-        logger.info(f"ADB命令执行完成: returncode={process.returncode}, stdout长度={len(stdout_str)}, stderr长度={len(stderr_str)}")
+        logger.debug(f"ADB命令执行完成: returncode={process.returncode}")
         if stderr_str:
             logger.warning(f"ADB命令stderr: {stderr_str[:200]}")
         

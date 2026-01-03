@@ -177,5 +177,6 @@ echo ""
 
 # 前台启动后端服务（显示所有日志）
 # --reload: 代码修改后自动重启（开发模式）
-uvicorn main:app --host 0.0.0.0 --port ${PORT} --reload
+# 使用 socket_app 以支持 Socket.IO 视频流功能
+uvicorn main:socket_app --host 0.0.0.0 --port ${PORT} --reload
 

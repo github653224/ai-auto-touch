@@ -29,6 +29,7 @@ const AIConsole: React.FC<AIConsoleProps> = ({ logs, connected, onClear, deviceI
   // 自动滚动到底部
   useEffect(() => {
     if (autoScroll && consoleRef.current) {
+      console.log('🔄 自动滚动到底部，当前日志数:', logs.length)
       consoleRef.current.scrollTop = consoleRef.current.scrollHeight
     }
   }, [logs, autoScroll])

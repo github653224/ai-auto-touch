@@ -1,7 +1,9 @@
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import socketio
 from app.api import device_api, ai_api, websocket_api, ai_websocket_api, phone_control_api
+from app.api.video_stream_api import sio
 from app.core.config import settings
 
 # 创建FastAPI应用
@@ -21,6 +23,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 集成 Socket.IO（用于视频流）
+socket_app = socketio.ASGIApp(sio, app)
+
 # 注册路由
 app.include_router(device_api.router, prefix=settings.API_V1_STR + "/devices", tags=["设备管理"])
 app.include_router(ai_api.router, prefix=settings.API_V1_STR + "/ai", tags=["AI控制"])
@@ -39,7 +44,7 @@ async def root():
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app",
+        "main:socket_app",  # 使用 socket_app 而不是 app
         host=settings.HOST,
         port=settings.PORT,
         reload=settings.DEBUG,

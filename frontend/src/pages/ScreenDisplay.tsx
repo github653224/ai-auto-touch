@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState, AppDispatch } from '../store'
 import { selectDevice } from '../features/deviceSlice'
@@ -9,7 +9,6 @@ import {
   Row, 
   Col, 
   Typography, 
-  Spin, 
   Slider,
   message,
   Space,
@@ -38,9 +37,8 @@ import {
   AppstoreOutlined
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import { useWebSocketManager } from '../hooks/useWebSocketManager'
 import { phoneControlApi } from '../api/phoneControlApi'
-// import { useH264Player } from '../hooks/useH264Player' // 已禁用视频流模式
+import { ScrcpyPlayer } from '../components/ScrcpyPlayer'
 
 const { Text, Title, Paragraph } = Typography
 
@@ -55,177 +53,16 @@ const ScreenDisplay = () => {
   const [textInput, setTextInput] = useState('') // 文本输入框
   const [screenSize, setScreenSize] = useState<{ width: number; height: number } | null>(null) // 屏幕尺寸
   const [isControlling, setIsControlling] = useState(false) // 控制操作中
-  // const videoRef = useRef<HTMLVideoElement>(null) // 已移除，不再使用
   const screenContainerRef = useRef<HTMLDivElement>(null) // 用于全屏的容器引用
-  // const canvasRef = useRef<HTMLCanvasElement>(null) // 已移除，只使用截图模式
-  // const [useVideo] = useState(false) // 禁用视频流模式，只使用截图模式
-  // const [connectionTimeout, setConnectionTimeout] = useState(false) // 连接超时标志（已移除）
   
-  // 使用全局WebSocket管理器（截图流）
-  // 注意：视频流模式已禁用，只使用截图模式
-  const { lastMessage, readyState, isConnected: screenshotConnected } = useWebSocketManager(
-    selectedDevice
-  )
+  // 使用 useCallback 包装回调函数，避免重新渲染时重新连接
+  const handleVideoReady = useCallback(() => {
+    message.success('视频流已连接')
+  }, [])
   
-  // 视频流模式已禁用
-  /*
-  // 当切换到视频模式时，确保截图模式的连接被正确清理
-  useEffect(() => {
-    if (useVideo && readyState === WebSocket.OPEN) {
-      // 如果切换到视频模式但截图连接还在，需要断开截图模式的连接
-      // 因为 H264 模式使用自己的 WebSocket 连接
-      console.log('切换到 H264 模式，断开截图模式连接')
-      // 注意：useWebSocketManager 会在 url 变为 null 时自动断开连接
-      // 但这里我们确保在切换模式时立即断开
-    }
-  }, [useVideo, readyState])
-
-  // H264 WebSocket 播放器（推荐，简单可靠）
-  const { supported: h264Supported, error: h264Error, stats: h264Stats, updateConfig } = useH264Player({
-    deviceId: selectedDevice,
-    enabled: useVideo, // 直接使用 H264 模式
-    canvasRef,
-    maxSize: resolution,
-    bitRate: quality,
-  })
-  
-  // 调试日志：显示 updateConfig 是否可用
-  useEffect(() => {
-    console.log('🔍 ScreenDisplay 状态:', {
-      useVideo,
-      hasUpdateConfig: !!updateConfig,
-      h264Supported,
-      selectedDevice
-    })
-  }, [useVideo, updateConfig, h264Supported, selectedDevice])
-  
-  // 使用 H264 WebSocket 模式
-  const videoSupported = h264Supported
-  const videoError = h264Error
-  const videoStats = h264Stats
-  */
-  
-  // 禁用视频流模式相关变量（已注释）
-  /*
-  const videoSupported = false
-  const videoError = null
-  const videoStats = null
-  const updateConfig = undefined
-  */
-  
-  // 连接超时检测已禁用（视频流模式已禁用）
-  /*
-  // 连接超时检测：如果视频流连接超过10秒仍未成功，标记为超时
-  useEffect(() => {
-    if (!useVideo || !selectedDevice) {
-      setConnectionTimeout(false)
-      return
-    }
-    
-    // 如果已经连接成功，清除超时标志
-    if (videoSupported && !videoError) {
-      setConnectionTimeout(false)
-      return
-    }
-    
-    // 如果浏览器不支持 WebCodecs，立即标记为超时
-    if (typeof window !== 'undefined' && 
-        typeof (window as any).VideoDecoder === 'undefined') {
-      setConnectionTimeout(true)
-      return
-    }
-    
-    // 设置超时检测
-    const timeoutId = setTimeout(() => {
-      if (!videoSupported || videoError) {
-        setConnectionTimeout(true)
-        message.warning('视频流连接超时，建议切换到截图模式', 5)
-      }
-    }, 15000) // 增加到15秒超时
-    
-    return () => clearTimeout(timeoutId)
-  }, [useVideo, selectedDevice, videoSupported, videoError])
-  */
-  
-  // 连接状态提示（只使用截图模式）
-  useEffect(() => {
-    const connected = screenshotConnected
-    if (selectedDevice && connected) {
-      console.log('屏幕连接已建立 - 截图模式')
-    } else if (selectedDevice && !connected && readyState === 3) { // 3 = CLOSED
-      console.log('屏幕连接已断开')
-    }
-  }, [selectedDevice, screenshotConnected, readyState])
-  
-  // 处理屏幕截图流
-  useEffect(() => {
-    if (!lastMessage) return
-    
-    try {
-      const data = lastMessage
-      if (data.type === 'screenshot' && data.data) {
-        const container = document.getElementById('screen-container')
-        if (!container) {
-          console.warn('❌ 找不到屏幕容器元素 #screen-container，等待容器渲染...')
-          // 延迟重试，等待容器渲染
-          setTimeout(() => {
-            const retryContainer = document.getElementById('screen-container')
-            if (retryContainer) {
-              let img = retryContainer.querySelector('img') as HTMLImageElement
-              if (!img) {
-                img = document.createElement('img')
-                img.style.width = '100%'
-                img.style.height = '100%'
-                img.style.objectFit = 'contain'
-                img.style.display = 'block'
-                img.style.maxWidth = '100%'
-                img.style.maxHeight = '100%'
-                retryContainer.appendChild(img)
-              }
-              // 释放旧的 Blob URL
-              if (img.src && img.src.startsWith('blob:')) {
-                URL.revokeObjectURL(img.src)
-              }
-              img.src = data.data
-              console.log('✅ 截图已显示（延迟渲染）')
-            }
-          }, 100)
-          return
-        }
-        let img = container.querySelector('img') as HTMLImageElement
-        if (!img) {
-          img = document.createElement('img')
-          img.style.width = '100%'
-          img.style.height = '100%'
-          img.style.objectFit = 'contain'
-          img.style.display = 'block'
-          img.style.maxWidth = '100%'
-          img.style.maxHeight = '100%'
-          container.appendChild(img)
-          console.log('✅ 创建截图图片元素')
-        }
-        // 释放旧的 Blob URL（避免内存泄漏）
-        if (img.src && img.src.startsWith('blob:')) {
-          URL.revokeObjectURL(img.src)
-        }
-        img.src = data.data
-        // 只在第一帧或每30帧记录一次日志
-        const frameCount = (window as any).__screenshotFrameCount = ((window as any).__screenshotFrameCount || 0) + 1
-        if (frameCount === 1 || frameCount % 30 === 0) {
-          console.log(`✅ 截图已更新（第 ${frameCount} 帧）`)
-        }
-      } else if (data.type === 'error') {
-        console.error('截图模式错误:', data.message)
-        message.error(`屏幕流错误: ${data.message}`)
-      } else if (data.type === 'connected') {
-        console.log('✅ 截图模式已连接:', data.message)
-      } else {
-        console.log('收到其他类型的消息:', data.type)
-      }
-    } catch (e) {
-      console.error('处理屏幕数据失败:', e, lastMessage)
-    }
-  }, [lastMessage])
+  const handleVideoError = useCallback((err: string) => {
+    message.error(`视频流错误: ${err}`)
+  }, [])
   
   // 切换设备
   const handleDeviceChange = (deviceId: string) => {
@@ -274,14 +111,14 @@ const ScreenDisplay = () => {
     }
   }, [])
   
-  // 调整视频质量（截图模式下不支持实时更新）
+  // 调整视频质量
   const handleQualityChange = (value: number) => {
     setQuality(value)
     console.log('🎨 调整视频质量:', { value })
     message.info(`视频质量已调整为 ${value} Mbps，将在下次连接时生效`)
   }
   
-  // 调整分辨率（截图模式下不支持实时更新）
+  // 调整分辨率
   const handleResolutionChange = (value: number) => {
     setResolution(value)
     console.log('📐 调整分辨率:', { value })
@@ -294,28 +131,9 @@ const ScreenDisplay = () => {
     value: device.device_id
   }))
   
-  // 连接状态判断（只使用截图模式）
-  const isConnected = readyState === 1 || screenshotConnected
-  
-  // readyState: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
-  const connectionStatus = isConnected ? 1 : readyState
-  
-  // 调试日志：帮助诊断连接问题（截图模式）
-  useEffect(() => {
-    if (selectedDevice) {
-      console.log('截图模式连接状态:', {
-        readyState,
-        screenshotConnected,
-        isConnected,
-        connectionStatus,
-        lastMessage: lastMessage?.type
-      })
-    }
-  }, [selectedDevice, readyState, screenshotConnected, isConnected, connectionStatus, lastMessage])
-  
   // 获取屏幕尺寸
   useEffect(() => {
-    if (selectedDevice && isConnected) {
+    if (selectedDevice) {
       phoneControlApi.getScreenSize(selectedDevice)
         .then(res => {
           if (res.data.success) {
@@ -325,7 +143,7 @@ const ScreenDisplay = () => {
         })
         .catch(err => console.error('获取屏幕尺寸失败:', err))
     }
-  }, [selectedDevice, isConnected])
+  }, [selectedDevice])
   
   // 处理屏幕点击
   const handleScreenClick = async (e: React.MouseEvent<HTMLDivElement>) => {
@@ -471,16 +289,22 @@ const ScreenDisplay = () => {
                     justifyContent: 'center',
                     alignItems: 'center',
                     position: 'relative',
-                    cursor: selectedDevice && isConnected ? 'pointer' : 'default',
+                    cursor: selectedDevice ? 'pointer' : 'default',
                   }}
                 >
-                  {/* 只使用截图模式 - Canvas 已移除 */}
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {/* img 元素会在 useEffect 中动态创建 */}
-                  </div>
+                  {/* 视频流 */}
+                  {selectedDevice && (
+                    <ScrcpyPlayer
+                      deviceId={selectedDevice}
+                      maxSize={resolution}
+                      bitRate={quality * 1_000_000}
+                      onReady={handleVideoReady}
+                      onError={handleVideoError}
+                    />
+                  )}
                   
                   {/* 加载状态和错误提示 */}
-                  {!selectedDevice ? (
+                  {!selectedDevice && (
                     <div style={{ 
                       position: 'absolute',
                       top: '50%',
@@ -494,23 +318,9 @@ const ScreenDisplay = () => {
                         请选择设备以查看实时画面
                       </Text>
                     </div>
-                  ) : connectionStatus !== 1 ? (
-                    <div style={{ 
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      textAlign: 'center',
-                      color: '#fff',
-                      zIndex: 10
-                    }}>
-                      <Spin size="large">
-                        <div style={{ marginTop: 8 }}>
-                          <div>正在连接屏幕...</div>
-                        </div>
-                      </Spin>
-                    </div>
-                  ) : null}
+                  )}
+                  
+                  {/* 视频流标签 */}
                   {selectedDevice && (
                     <div
                       style={{
@@ -523,12 +333,9 @@ const ScreenDisplay = () => {
                         fontSize: 12,
                       }}
                     >
-                      <Text
-                        type={connectionStatus === 1 ? 'success' : 'danger'}
-                        style={{ color: connectionStatus === 1 ? '#52c41a' : '#ff4d4f', fontSize: 12 }}
-                      >
-                        {connectionStatus === 1 ? '已连接' : '未连接'}
-                      </Text>
+                      <Tag color="blue" style={{ margin: 0, fontSize: 11 }}>
+                        视频流
+                      </Tag>
                     </div>
                   )}
                 </div>
@@ -551,23 +358,6 @@ const ScreenDisplay = () => {
                     style={{ width: '100%', marginTop: 8 }}
                     placeholder="请选择设备"
                   />
-                </div>
-
-                {/* 显示模式开关已移除 - 只使用截图模式 */}
-                <div>
-                  <Space size="small" style={{ marginBottom: 8 }}>
-                    <Text strong>显示模式：</Text>
-                    <Tag>截图流</Tag>
-                  </Space>
-                  <Text>
-                    连接状态: {connectionStatus === 1 ? (
-                      <Text type="success">已连接</Text>
-                    ) : connectionStatus === 0 ? (
-                      <Text type="warning">连接中...</Text>
-                    ) : (
-                      <Text type="danger">未连接</Text>
-                    )}
-                  </Text>
                 </div>
 
                 <div>

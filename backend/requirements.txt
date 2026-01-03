@@ -21,4 +21,5 @@ apkutils2>=1.0.0,<2.0.0
 retry>=0.9
 whichcraft
 aiortc>=1.6.0
+python-socketio>=5.11.0
 # 提示: av(PyAV) 建议通过 conda 安装 (如 conda install -c conda-forge av)
