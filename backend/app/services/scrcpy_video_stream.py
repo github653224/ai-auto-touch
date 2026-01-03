@@ -60,6 +60,11 @@ class ScrcpyStreamer:
         # Find scrcpy-server location
         self.scrcpy_server_path = self._find_scrcpy_server()
 
+    @property
+    def video_metadata(self) -> ScrcpyVideoStreamMetadata | None:
+        """Get cached video metadata."""
+        return self._metadata
+
     def _find_scrcpy_server(self) -> str:
         """Find scrcpy-server binary path."""
         # Priority 1: Project root directory (for repository version)
