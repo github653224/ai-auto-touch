@@ -79,9 +79,13 @@ install_dependencies() {
     # 安装其他工具
     pkg install curl wget -y
     
-    # 新增：安装 Rust、binutils、clang 和 uv（这些用于构建 Rust 扩展和 uv 工具）
+    # 新增：安装 Rust 和构建工具
     print_info "安装 Rust 和构建工具..."
     pkg install rust binutils clang uv -y
+    
+    # 新增：安装 Pillow 所需的图像库依赖
+    print_info "安装 Pillow 图像库依赖..."
+    pkg install libjpeg-turbo zlib libpng freetype libwebp libtiff -y
     
     print_success "必要软件安装完成"
 }
@@ -93,17 +97,22 @@ install_python_packages() {
     # 激活虚拟环境
     source .venv/bin/activate
     
-    # 新增：设置 UV_LINK_MODE 以避免硬链接失败
+    # 设置 UV_LINK_MODE 以避免硬链接失败
     export UV_LINK_MODE=copy
     
-    # 新增：设置 CARGO_BUILD_TARGET 为 Termux 的目标平台（aarch64-unknown-linux-android 或类似）
+    # 设置 Rust 构建目标
     print_info "设置 Rust 构建目标..."
     export CARGO_BUILD_TARGET="$(rustc -Vv | grep host | awk '{print $2}')"
     
-    # 升级 pip（使用 uv）
+    # 新增：设置 Pillow 编译的环境变量，帮助找到库路径
+    export PREFIX="/data/data/com.termux/files/usr"
+    export LDFLAGS="-L${PREFIX}/lib/"
+    export CFLAGS="-I${PREFIX}/include/"
+    
+    # 升级 pip
     uv pip install --upgrade pip
     
-    # 安装依赖（添加 --no-binary jiter 以强制源构建，如果需要测试；否则保持原样）
+    # 安装依赖（如果还是失败，可添加 --no-binary pillow 以强制源构建测试）
     uv pip install pillow openai requests
     
     print_success "Python 依赖安装完成"
