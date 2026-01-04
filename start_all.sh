@@ -44,33 +44,38 @@ echo ""
 # 显示菜单
 echo "请选择启动模式："
 echo ""
-echo "  1) 启动后端服务 (FastAPI)"
-echo "  2) 启动前端服务 (React)"
-echo "  3) 同时启动前后端 (推荐)"
-echo "  4) 启动 AI 模型服务 (vLLM)"
-echo "  5) 全部启动 (模型 + 后端 + 前端)"
+echo "  1) 启动后端服务 (当前终端)"
+echo "  2) 启动前端服务 (当前终端)"
+echo "  3) 同时启动前后端 (新终端窗口)"
+echo "  4) 同时启动前后端 (tmux 分屏)"
+echo "  5) 启动 AI 模型服务 (当前终端)"
+echo "  6) 查看服务日志 (实时)"
 echo "  0) 退出"
 echo ""
-read -p "请输入选项 [0-5]: " choice
+read -p "请输入选项 [0-6]: " choice
 
 case $choice in
     1)
         echo ""
         echo -e "${BLUE}🚀 启动后端服务...${NC}"
+        echo -e "${YELLOW}💡 日志将显示在当前终端${NC}"
+        echo ""
         cd backend
         bash start_backend.sh
         ;;
     2)
         echo ""
         echo -e "${BLUE}🚀 启动前端服务...${NC}"
+        echo -e "${YELLOW}💡 日志将显示在当前终端${NC}"
+        echo ""
         cd frontend
         bash start_frontend.sh
         ;;
     3)
         echo ""
-        echo -e "${BLUE}🚀 同时启动前后端服务...${NC}"
+        echo -e "${BLUE}🚀 同时启动前后端服务 (新终端窗口)...${NC}"
         echo ""
-        echo -e "${YELLOW}💡 提示: 将在两个终端窗口中启动服务${NC}"
+        echo -e "${YELLOW}💡 提示: 将在两个新终端窗口中启动服务${NC}"
         echo -e "${YELLOW}   - 后端: http://localhost:8001${NC}"
         echo -e "${YELLOW}   - 前端: http://localhost:3002${NC}"
         echo ""
@@ -82,6 +87,8 @@ case $choice in
             sleep 2
             osascript -e 'tell app "Terminal" to do script "cd \"'$(pwd)'/frontend\" && bash start_frontend.sh"'
             echo -e "${GREEN}✅ 已在新终端窗口中启动服务${NC}"
+            echo ""
+            echo -e "${YELLOW}💡 提示: 可以在新打开的终端窗口中查看实时日志${NC}"
         elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
             # Linux
             if command -v gnome-terminal &> /dev/null; then
@@ -89,11 +96,15 @@ case $choice in
                 sleep 2
                 gnome-terminal -- bash -c "cd frontend && bash start_frontend.sh; exec bash"
                 echo -e "${GREEN}✅ 已在新终端窗口中启动服务${NC}"
+                echo ""
+                echo -e "${YELLOW}💡 提示: 可以在新打开的终端窗口中查看实时日志${NC}"
             elif command -v xterm &> /dev/null; then
                 xterm -e "cd backend && bash start_backend.sh" &
                 sleep 2
                 xterm -e "cd frontend && bash start_frontend.sh" &
                 echo -e "${GREEN}✅ 已在新终端窗口中启动服务${NC}"
+                echo ""
+                echo -e "${YELLOW}💡 提示: 可以在新打开的终端窗口中查看实时日志${NC}"
             else
                 echo -e "${YELLOW}⚠️  未检测到终端模拟器，请手动启动：${NC}"
                 echo "   终端1: cd backend && bash start_backend.sh"
@@ -107,7 +118,57 @@ case $choice in
         ;;
     4)
         echo ""
+        echo -e "${BLUE}🚀 同时启动前后端服务 (tmux 分屏)...${NC}"
+        echo ""
+        
+        # 检查 tmux 是否安装
+        if ! command -v tmux &> /dev/null; then
+            echo -e "${RED}❌ 错误: 未检测到 tmux${NC}"
+            echo "请先安装 tmux:"
+            echo "  macOS: brew install tmux"
+            echo "  Ubuntu: sudo apt install tmux"
+            exit 1
+        fi
+        
+        echo -e "${YELLOW}💡 提示: 使用 tmux 分屏显示日志${NC}"
+        echo -e "${YELLOW}   - 左侧: 后端日志${NC}"
+        echo -e "${YELLOW}   - 右侧: 前端日志${NC}"
+        echo ""
+        echo -e "${YELLOW}快捷键:${NC}"
+        echo -e "${YELLOW}   - Ctrl+B 然后按 ←/→: 切换窗格${NC}"
+        echo -e "${YELLOW}   - Ctrl+B 然后按 D: 分离会话（后台运行）${NC}"
+        echo -e "${YELLOW}   - Ctrl+C: 停止当前窗格的服务${NC}"
+        echo -e "${YELLOW}   - 输入 'exit' 两次: 完全退出${NC}"
+        echo ""
+        read -p "按 Enter 继续..."
+        
+        # 创建 tmux 会话
+        SESSION_NAME="ai-auto-touch"
+        
+        # 检查会话是否已存在
+        if tmux has-session -t $SESSION_NAME 2>/dev/null; then
+            echo -e "${YELLOW}⚠️  会话已存在，正在附加...${NC}"
+            tmux attach -t $SESSION_NAME
+        else
+            # 创建新会话并启动后端
+            tmux new-session -d -s $SESSION_NAME -n "services" "cd $(pwd)/backend && bash start_backend.sh"
+            
+            # 垂直分屏并启动前端
+            tmux split-window -h -t $SESSION_NAME "cd $(pwd)/frontend && bash start_frontend.sh"
+            
+            # 调整窗格大小（左右各50%）
+            tmux select-layout -t $SESSION_NAME even-horizontal
+            
+            # 附加到会话
+            echo -e "${GREEN}✅ tmux 会话已创建${NC}"
+            tmux attach -t $SESSION_NAME
+        fi
+        ;;
+    5)
+        echo ""
         echo -e "${BLUE}🚀 启动 AI 模型服务...${NC}"
+        echo -e "${YELLOW}💡 日志将显示在当前终端${NC}"
+        echo ""
         cd backend
         if [ -f "start_model.sh" ]; then
             bash start_model.sh
@@ -116,34 +177,61 @@ case $choice in
             echo "如果使用远程 API，请忽略此错误"
         fi
         ;;
-    5)
+    6)
         echo ""
-        echo -e "${BLUE}🚀 启动全部服务...${NC}"
+        echo -e "${BLUE}📊 查看服务日志...${NC}"
         echo ""
-        echo -e "${YELLOW}💡 提示: 将在三个终端窗口中启动服务${NC}"
-        echo -e "${YELLOW}   - AI 模型: http://localhost:8000${NC}"
-        echo -e "${YELLOW}   - 后端: http://localhost:8001${NC}"
-        echo -e "${YELLOW}   - 前端: http://localhost:3002${NC}"
+        echo "请选择要查看的日志："
+        echo "  1) 后端日志"
+        echo "  2) 前端日志"
+        echo "  3) 同时查看 (tmux 分屏)"
         echo ""
+        read -p "请输入选项 [1-3]: " log_choice
         
-        # 检查操作系统
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS
-            if [ -f "backend/start_model.sh" ]; then
-                osascript -e 'tell app "Terminal" to do script "cd \"'$(pwd)'/backend\" && bash start_model.sh"'
-                echo "⏳ 等待 AI 模型启动 (30秒)..."
-                sleep 30
-            fi
-            osascript -e 'tell app "Terminal" to do script "cd \"'$(pwd)'/backend\" && bash start_backend.sh"'
-            sleep 2
-            osascript -e 'tell app "Terminal" to do script "cd \"'$(pwd)'/frontend\" && bash start_frontend.sh"'
-            echo -e "${GREEN}✅ 已在新终端窗口中启动所有服务${NC}"
-        else
-            echo -e "${YELLOW}⚠️  请手动启动：${NC}"
-            echo "   终端1: cd backend && bash start_model.sh"
-            echo "   终端2: cd backend && bash start_backend.sh"
-            echo "   终端3: cd frontend && bash start_frontend.sh"
-        fi
+        case $log_choice in
+            1)
+                echo ""
+                echo -e "${BLUE}📋 后端日志 (实时)${NC}"
+                echo -e "${YELLOW}💡 按 Ctrl+C 退出${NC}"
+                echo ""
+                if [ -f "backend/logs/app.log" ]; then
+                    tail -f backend/logs/app.log
+                else
+                    echo -e "${YELLOW}⚠️  日志文件不存在，请先启动后端服务${NC}"
+                fi
+                ;;
+            2)
+                echo ""
+                echo -e "${BLUE}📋 前端日志 (实时)${NC}"
+                echo -e "${YELLOW}💡 按 Ctrl+C 退出${NC}"
+                echo ""
+                if [ -f "frontend/logs/vite.log" ]; then
+                    tail -f frontend/logs/vite.log
+                else
+                    echo -e "${YELLOW}⚠️  日志文件不存在，请先启动前端服务${NC}"
+                fi
+                ;;
+            3)
+                if ! command -v tmux &> /dev/null; then
+                    echo -e "${RED}❌ 错误: 未检测到 tmux${NC}"
+                    exit 1
+                fi
+                
+                SESSION_NAME="ai-auto-touch-logs"
+                
+                if tmux has-session -t $SESSION_NAME 2>/dev/null; then
+                    tmux attach -t $SESSION_NAME
+                else
+                    tmux new-session -d -s $SESSION_NAME -n "logs" "tail -f backend/logs/app.log 2>/dev/null || echo '后端日志不存在'"
+                    tmux split-window -h -t $SESSION_NAME "tail -f frontend/logs/vite.log 2>/dev/null || echo '前端日志不存在'"
+                    tmux select-layout -t $SESSION_NAME even-horizontal
+                    tmux attach -t $SESSION_NAME
+                fi
+                ;;
+            *)
+                echo -e "${RED}❌ 无效选项${NC}"
+                ;;
+        esac
         ;;
     0)
         echo ""
