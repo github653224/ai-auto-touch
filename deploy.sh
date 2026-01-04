@@ -94,8 +94,49 @@ install_dependencies() {
 install_python_packages() {
     print_info "安装 Python 依赖包..."
     
+    # 确保在正确的目录
+    cd ~ || {
+        print_error "无法切换到 home 目录"
+        return 1
+    }
+    
+    # 检查虚拟环境是否存在
+    if [ ! -d ".venv" ]; then
+        print_info "创建虚拟环境..."
+        uv venv .venv || {
+            print_error "创建虚拟环境失败"
+            return 1
+        }
+    fi
+    
+    # 检查虚拟环境结构
+    print_info "检查虚拟环境结构..."
+    if [ -d ".venv/bin" ]; then
+        print_info "使用标准虚拟环境结构 (bin/)"
+        VENV_ACTIVATE=".venv/bin/activate"
+    elif [ -d ".venv/Scripts" ]; then
+        print_info "使用 Windows 虚拟环境结构 (Scripts/)"
+        VENV_ACTIVATE=".venv/Scripts/activate"
+    else
+        print_error "无法识别虚拟环境结构"
+        print_info "列出 .venv 目录内容:"
+        ls -la .venv/
+        return 1
+    fi
+    
     # 激活虚拟环境
-    source .venv/bin/activate
+    if [ -f "$VENV_ACTIVATE" ]; then
+        source "$VENV_ACTIVATE" || {
+            print_error "虚拟环境激活失败"
+            return 1
+        }
+        print_success "虚拟环境已激活"
+    else
+        print_error "虚拟环境激活脚本不存在: $(pwd)/$VENV_ACTIVATE"
+        print_info "列出 .venv 目录内容:"
+        ls -la .venv/
+        return 1
+    fi
     
     # 设置 UV_LINK_MODE 以避免硬链接失败
     export UV_LINK_MODE=copy
@@ -144,18 +185,80 @@ download_autoglm() {
 install_autoglm() {
     print_info "安装 Open-AutoGLM..."
     
-    cd ~/Open-AutoGLM
+    # 切换到 Open-AutoGLM 目录
+    if [ ! -d ~/Open-AutoGLM ]; then
+        print_error "Open-AutoGLM 目录不存在"
+        return 1
+    fi
+    
+    cd ~/Open-AutoGLM || {
+        print_error "无法切换到 Open-AutoGLM 目录"
+        return 1
+    }
+    
+    print_info "当前目录: $(pwd)"
+    
+    # 检查并创建虚拟环境
+    if [ ! -d ".venv" ]; then
+        print_info "创建虚拟环境..."
+        uv venv .venv || {
+            print_error "创建虚拟环境失败"
+            return 1
+        }
+    else
+        print_info "虚拟环境已存在"
+    fi
+    
+    # 检查虚拟环境结构
+    print_info "检查虚拟环境结构..."
+    if [ -d ".venv/bin" ]; then
+        print_info "使用标准虚拟环境结构 (bin/)"
+        VENV_ACTIVATE=".venv/bin/activate"
+    elif [ -d ".venv/Scripts" ]; then
+        print_info "使用 Windows 虚拟环境结构 (Scripts/)"
+        VENV_ACTIVATE=".venv/Scripts/activate"
+    else
+        print_error "无法识别虚拟环境结构"
+        print_info "列出 .venv 目录内容:"
+        ls -la .venv/
+        return 1
+    fi
+    
+    # 检查虚拟环境激活脚本
+    if [ ! -f "$VENV_ACTIVATE" ]; then
+        print_error "虚拟环境激活脚本不存在: $(pwd)/$VENV_ACTIVATE"
+        print_info "尝试列出 .venv 目录内容:"
+        ls -la .venv/ 2>/dev/null || print_error ".venv 目录不可访问"
+        return 1
+    fi
     
     # 激活虚拟环境
-    source .venv/bin/activate
+    print_info "激活虚拟环境..."
+    source "$VENV_ACTIVATE" || {
+        print_error "虚拟环境激活失败"
+        return 1
+    }
+    
+    print_success "虚拟环境已激活"
+    print_info "Python 路径: $(which python)"
     
     # 安装项目依赖
     if [ -f "requirements.txt" ]; then
-        uv pip install -r requirements.txt
+        print_info "安装项目依赖..."
+        uv pip install -r requirements.txt || {
+            print_error "依赖安装失败"
+            return 1
+        }
+    else
+        print_warning "未找到 requirements.txt"
     fi
     
     # 安装 phone_agent
-    uv pip install -e .
+    print_info "安装 phone_agent..."
+    uv pip install -e . || {
+        print_error "phone_agent 安装失败"
+        return 1
+    }
     
     print_success "Open-AutoGLM 安装完成"
 }
