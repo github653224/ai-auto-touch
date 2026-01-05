@@ -800,9 +800,9 @@ ai-auto-touch/
 
 ## 📮 联系方式
 
-- 💬 提交 Issue: [GitHub Issues](https://github.com/your-username/ai-auto-touch/issues)
-- 📧 邮箱: your-email@example.com
-- 🌐 官网: https://your-website.com
+- 💬 提交 Issue: [GitHub Issues](https://github.com/github653224/ai-auto-touch/issues)
+- 📧 邮箱: 944851899@qq.com
+- 🌐 官网: 热爱技术的小牛
 
 ## 📊 项目状态
 
