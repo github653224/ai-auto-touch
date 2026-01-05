@@ -583,13 +583,25 @@ ai-auto-touch/
 
 我们欢迎所有形式的贡献！请查看 [贡献指南](CONTRIBUTING.md) 了解详情。
 
+### 分支策略
+
+项目采用 Git Flow 简化版本进行开发：
+
+- `master` - 生产环境分支，稳定版本
+- `develop` - 开发主分支，日常开发合并到这里
+- `feature/*` - 功能开发分支
+- `bugfix/*` - Bug 修复分支
+- `hotfix/*` - 紧急修复分支
+
+详细说明请查看 [分支管理策略](.github/BRANCH_STRATEGY.md)
+
 ### 如何贡献
 
 1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+2. 从 develop 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'feat: Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
+5. 创建 Pull Request 到 develop 分支
 
 ### 开发文档
 
