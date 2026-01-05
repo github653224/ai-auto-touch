@@ -372,10 +372,20 @@ async def scroll_right(device_id: str, request: ScrollRequest):
 
 @router.post("/{device_id}/unlock-screen")
 async def unlock_screen(device_id: str):
-    """解锁屏幕"""
+    """解锁屏幕（向上滑动）"""
     try:
         asyncio.create_task(phone_control_service.unlock_screen(device_id))
-        return {"success": True, "action": "unlock_screen", "message": "解锁屏幕命令已发送"}
+        return {"success": True, "action": "unlock_screen", "message": "向上滑动命令已发送"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{device_id}/swipe-down")
+async def swipe_down(device_id: str):
+    """向下滑动屏幕"""
+    try:
+        asyncio.create_task(phone_control_service.swipe_down(device_id))
+        return {"success": True, "action": "swipe_down", "message": "向下滑动命令已发送"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

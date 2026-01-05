@@ -128,6 +128,9 @@ export const phoneControlApi = {
   unlockScreen: (deviceId: string) =>
     axios.post(`${API_BASE_URL}${API_PREFIX}/${deviceId}/unlock-screen`),
   
+  swipeDown: (deviceId: string) =>
+    axios.post(`${API_BASE_URL}${API_PREFIX}/${deviceId}/swipe-down`),
+  
   openNotification: (deviceId: string) =>
     axios.post(`${API_BASE_URL}${API_PREFIX}/${deviceId}/open-notification`),
   

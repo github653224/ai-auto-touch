@@ -2,6 +2,7 @@ import asyncio
 import json
 import subprocess
 import os
+import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 from app.core.config import settings
@@ -86,8 +87,9 @@ class AIService:
             })
             
             # 构建命令行参数
+            # 使用当前 Python 解释器（虚拟环境中的 Python）
             cmd = [
-                "python3",
+                sys.executable,  # 使用当前虚拟环境的 Python
                 "-u",  # 禁用Python输出缓冲，确保实时输出
                 str(self.main_py_path),
                 "--base-url", model_base_url,

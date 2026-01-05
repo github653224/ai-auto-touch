@@ -59,8 +59,8 @@ frontend/dist/
 frontend/build/
 backend/__pycache__/
 
-# Models and large files
-models/
+# Models and large files (AI model files, not code)
+/models/
 *.safetensors
 *.bin
 *.pt

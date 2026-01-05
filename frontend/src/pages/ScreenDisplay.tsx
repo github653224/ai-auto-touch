@@ -33,7 +33,6 @@ import {
   ClearOutlined,
   BellOutlined,
   SettingOutlined,
-  LockOutlined,
   AppstoreOutlined
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -552,13 +551,22 @@ const ScreenDisplay = () => {
               <div style={{ marginBottom: 16 }}>
                 <Text strong>系统操作</Text>
                 <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  <Tooltip title="解锁屏幕">
+                  <Tooltip title="向上滑动屏幕（解锁/刷新）">
                     <Button 
-                      icon={<LockOutlined />}
-                      onClick={() => handleControl(() => phoneControlApi.unlockScreen(selectedDevice!), '解锁屏幕')}
+                      icon={<ArrowUpOutlined />}
+                      onClick={() => handleControl(() => phoneControlApi.unlockScreen(selectedDevice!), '向上滑动')}
                       disabled={!selectedDevice || isControlling}
                     >
-                      解锁
+                      上滑
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title="向下滑动屏幕（下拉刷新）">
+                    <Button 
+                      icon={<ArrowDownOutlined />}
+                      onClick={() => handleControl(() => phoneControlApi.swipeDown(selectedDevice!), '向下滑动')}
+                      disabled={!selectedDevice || isControlling}
+                    >
+                      下滑
                     </Button>
                   </Tooltip>
                   <Tooltip title="打开通知栏">
