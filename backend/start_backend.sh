@@ -86,20 +86,48 @@ fi
 echo ""
 echo "检查端口 ${PORT}..."
 if lsof -Pi :${PORT} -sTCP:LISTEN -t >/dev/null 2>&1; then
+    PID=$(lsof -ti :${PORT})
+    PROCESS_NAME=$(ps -p $PID -o comm= 2>/dev/null || echo "未知进程")
     echo "⚠️  警告: 端口 ${PORT} 已被占用"
-    echo "是否要停止现有服务并重新启动？(y/n)"
-    read -n 1 -r
+    echo "   进程 PID: ${PID}"
+    echo "   进程名称: ${PROCESS_NAME}"
+    echo ""
+    echo "请选择操作："
+    echo "  1) 自动停止并重启"
+    echo "  2) 手动处理"
+    echo "  3) 取消启动"
+    echo ""
+    read -p "请输入选项 [1-3]: " -n 1 -r
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        PID=$(lsof -ti :${PORT})
-        echo "正在停止进程 ${PID}..."
-        kill $PID
-        sleep 2
-        echo "✓ 已停止现有服务"
-    else
-        echo "取消启动"
-        exit 1
-    fi
+    
+    case $REPLY in
+        1)
+            echo "正在停止进程 ${PID}..."
+            kill $PID 2>/dev/null || kill -9 $PID 2>/dev/null
+            sleep 2
+            
+            # 再次检查端口是否释放
+            if lsof -Pi :${PORT} -sTCP:LISTEN -t >/dev/null 2>&1; then
+                echo "❌ 端口仍被占用，尝试强制停止..."
+                kill -9 $(lsof -ti :${PORT}) 2>/dev/null
+                sleep 1
+            fi
+            
+            echo "✓ 已停止现有服务"
+            ;;
+        2)
+            echo ""
+            echo "请手动停止占用端口的进程："
+            echo "  kill ${PID}"
+            echo "或强制停止："
+            echo "  kill -9 ${PID}"
+            exit 1
+            ;;
+        3|*)
+            echo "取消启动"
+            exit 1
+            ;;
+    esac
 else
     echo "✓ 端口 ${PORT} 可用"
 fi

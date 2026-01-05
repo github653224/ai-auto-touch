@@ -245,6 +245,19 @@ AUTOGLM_API_KEY=EMPTY
 
 #### 4. 启动后端服务
 
+**macOS / Linux:**
+```bash
+cd backend
+bash start_backend.sh
+```
+
+**Windows:**
+```cmd
+cd backend
+start_backend.bat
+```
+
+**手动启动（所有平台）:**
 ```bash
 cd backend
 
@@ -264,15 +277,26 @@ cp .env.example .env
 # 编辑 .env 文件，填入你的模型配置
 
 # 启动服务
-bash start_backend.sh
-# 或手动启动
-# uvicorn main:app --host 0.0.0.0 --port 8001 --reload
+uvicorn main:socket_app --host 0.0.0.0 --port 8001 --reload
 ```
 
 后端服务启动后，访问 http://localhost:8001/docs 查看 API 文档。
 
 #### 5. 启动前端服务
 
+**macOS / Linux:**
+```bash
+cd frontend
+bash start_frontend.sh
+```
+
+**Windows:**
+```cmd
+cd frontend
+start_frontend.bat
+```
+
+**手动启动（所有平台）:**
 ```bash
 cd frontend
 
@@ -280,20 +304,40 @@ cd frontend
 npm install
 
 # 启动开发服务器
-npm run dev
+npm run dev -- --host --port 3002 --clearScreen false
 ```
 
-前端服务启动后，访问 http://localhost:5173
+前端服务启动后，访问 http://localhost:3002
 
-#### 6. 一键启动（可选）
+> 💡 **提示**: 使用 `--host` 参数可以让局域网内其他设备访问
 
+#### 6. 一键启动（推荐）
+
+**macOS / Linux:**
 ```bash
 # 在项目根目录下
-cd backend
 bash start_all.sh
 ```
 
-该脚本会提示你分别启动各个服务，便于查看日志和调试。
+**启动选项:**
+- **选项 1**: 启动后端服务（当前终端）
+- **选项 2**: 启动前端服务（当前终端）
+- **选项 3**: 同时启动前后端（新终端窗口）
+- **选项 4**: 同时启动前后端（tmux 分屏，推荐）
+- **选项 5**: 启动 AI 模型服务
+- **选项 6**: 查看服务日志
+
+**推荐使用 tmux 分屏模式**（选项 4）：
+- 左右分屏显示前后端日志
+- 方便同时查看和调试
+- 支持后台运行
+
+**tmux 快捷键:**
+- `Ctrl+B` 然后按 `←/→`: 切换窗格
+- `Ctrl+B` 然后按 `D`: 分离会话（后台运行）
+- `Ctrl+C`: 停止当前窗格的服务
+
+> 📖 **详细说明**: 查看 [启动脚本使用说明](启动脚本使用说明.md)
 
 ### 连接 Android 设备
 
@@ -314,15 +358,28 @@ bash start_all.sh
    ```
 
 4. **在 Web 界面中扫描设备**
-   - 打开浏览器访问 http://localhost:5173
+   - 打开浏览器访问 http://localhost:3002
    - 点击"扫描设备"按钮
    - 选择设备并点击"连接"
+
+### 服务端口说明
+
+| 服务 | 端口 | 访问地址 | 说明 |
+|------|------|----------|------|
+| 前端 | 3002 | http://localhost:3002 | React 开发服务器 |
+| 后端 API | 8001 | http://localhost:8001 | FastAPI 服务 |
+| API 文档 | 8001 | http://localhost:8001/docs | Swagger UI |
+| Socket.IO | 8001 | ws://localhost:8001/socket.io | 视频流 WebSocket |
+| AI 模型 | 8000 | http://localhost:8000 | vLLM OpenAI 兼容 API |
+
+> 💡 **局域网访问**: 使用 `--host` 参数启动前端后，可通过 `http://你的IP:3002` 在局域网内访问
 
 ## 📚 使用文档
 
 ### 📖 完整文档
 
-- 📘 [快速开始指南](docs/QUICK_START.md) - 5分钟快速上手
+- 📘 [快速开始指南](快速启动指南.md) - 5分钟快速上手
+- 🚀 [启动脚本使用说明](启动脚本使用说明.md) - 详细的启动方式和选项
 - 🎮 [手机控制功能](docs/PHONE_CONTROL.md) - 完整的手机控制API和使用说明
 - 🤖 [模型设置指南](docs/MODEL_SETUP.md) - AI模型下载和配置
 - 🔧 [故障排除](TROUBLESHOOTING.md) - 常见问题解决方案
