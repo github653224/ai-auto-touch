@@ -182,6 +182,8 @@ cp .env.example .env
   AUTOGLM_API_KEY=your-api-key
   ```
 
+**配置完成后，直接启动后端服务即可，无需启动模型服务**
+
 ##### 方式二：本地部署模型（推荐有 GPU 的用户）
 
 本地部署可以获得更快的响应速度和更好的隐私保护，但需要较高的硬件配置。
@@ -206,32 +208,17 @@ huggingface-cli download zai-org/AutoGLM-Phone-9B --local-dir ./models/AutoGLM-P
 pip install modelscope
 modelscope download --model ZhipuAI/AutoGLM-Phone-9B --local_dir ./models/AutoGLM-Phone-9B
 
-# 3. 启动模型服务
+# 3. 配置本地模型
 cd backend
+cp .env.example .env
+
+# 编辑 .env 文件
+# AUTOGLM_BASE_URL=http://localhost:8000/v1
+# AUTOGLM_MODEL_NAME=autoglm-phone-9b
+# AUTOGLM_API_KEY=EMPTY
+
+# 4. 启动模型服务（在单独的终端窗口）
 bash start_model.sh
-
-# 或手动启动
-python3 -m vllm.entrypoints.openai.api_server \
-  --served-model-name autoglm-phone-9b \
-  --allowed-local-media-path / \
-  --mm-encoder-tp-mode data \
-  --mm_processor_cache_type shm \
-  --mm_processor_kwargs '{"max_pixels":5000000}' \
-  --max-model-len 25480 \
-  --chat-template-content-format string \
-  --limit-mm-per-prompt '{"image":10}' \
-  --model ./models/AutoGLM-Phone-9B \
-  --port 8000 \
-  --trust-remote-code
-```
-
-**配置本地模型**
-
-```bash
-# 编辑 backend/.env 文件
-AUTOGLM_BASE_URL=http://localhost:8000/v1
-AUTOGLM_MODEL_NAME=autoglm-phone-9b
-AUTOGLM_API_KEY=EMPTY
 ```
 
 模型服务启动后，访问 http://localhost:8000/v1/models 验证。
@@ -324,7 +311,7 @@ bash start_all.sh
 - **选项 2**: 启动前端服务（当前终端）
 - **选项 3**: 同时启动前后端（新终端窗口）
 - **选项 4**: 同时启动前后端（tmux 分屏，推荐）
-- **选项 5**: 启动 AI 模型服务
+- **选项 5**: 启动 AI 模型服务（仅本地部署时需要）
 - **选项 6**: 查看服务日志
 
 **推荐使用 tmux 分屏模式**（选项 4）：
@@ -338,6 +325,52 @@ bash start_all.sh
 - `Ctrl+C`: 停止当前窗格的服务
 
 > 📖 **详细说明**: 查看 [启动脚本使用说明](启动脚本使用说明.md)
+
+#### 7. 启动服务说明
+
+根据你选择的 AI 模型部署方式，启动流程略有不同：
+
+**使用远程 API 服务（智谱 AI、ModelScope 等）:**
+```bash
+# 只需启动后端和前端服务
+# 方式 1: 使用一键启动脚本
+bash start_all.sh  # 选择选项 4（tmux 分屏）
+
+# 方式 2: 手动启动
+# 终端 1 - 后端服务
+cd backend && bash start_backend.sh
+
+# 终端 2 - 前端服务
+cd frontend && bash start_frontend.sh
+```
+
+**使用本地部署模型:**
+```bash
+# 需要启动模型服务、后端服务和前端服务
+# 方式 1: 使用一键启动脚本
+bash start_all.sh
+# 先选择选项 5 启动模型服务
+# 等待模型加载完成后，再选择选项 4 启动前后端
+
+# 方式 2: 手动启动
+# 终端 1 - AI 模型服务
+cd backend && bash start_model.sh
+
+# 终端 2 - 后端服务（等待模型启动完成）
+cd backend && bash start_backend.sh
+
+# 终端 3 - 前端服务
+cd frontend && bash start_frontend.sh
+```
+
+**停止所有服务:**
+```bash
+# 在项目根目录或 backend 目录下
+bash backend/stop_all.sh
+
+# 或使用端口清理工具
+bash kill_ports.sh
+```
 
 ### 连接 Android 设备
 
@@ -370,9 +403,26 @@ bash start_all.sh
 | 后端 API | 8001 | http://localhost:8001 | FastAPI 服务 |
 | API 文档 | 8001 | http://localhost:8001/docs | Swagger UI |
 | Socket.IO | 8001 | ws://localhost:8001/socket.io | 视频流 WebSocket |
-| AI 模型 | 8000 | http://localhost:8000 | vLLM OpenAI 兼容 API |
+| AI 模型 | 8000 | http://localhost:8000 | vLLM OpenAI 兼容 API（仅本地部署） |
 
 > 💡 **局域网访问**: 使用 `--host` 参数启动前端后，可通过 `http://你的IP:3002` 在局域网内访问
+
+### 启动脚本说明
+
+项目提供了多个启动脚本，根据需求选择使用：
+
+| 脚本位置 | 用途 | 使用场景 |
+|---------|------|---------|
+| `start_all.sh` | 一键启动所有服务 | 推荐使用，支持多种启动模式 |
+| `backend/start_backend.sh` | 启动后端服务 | 单独启动后端 |
+| `backend/start_model.sh` | 启动 AI 模型服务 | 仅本地部署模型时使用 |
+| `backend/stop_all.sh` | 停止所有服务 | 停止后端和模型服务 |
+| `frontend/start_frontend.sh` | 启动前端服务 | 单独启动前端 |
+| `kill_ports.sh` | 清理占用端口 | 端口被占用时使用 |
+
+**Windows 用户:**
+- `backend/start_backend.bat` - 启动后端服务
+- `frontend/start_frontend.bat` - 启动前端服务
 
 ## 📚 使用文档
 
