@@ -1,25 +1,55 @@
+# ==================== 核心框架 ====================
+# FastAPI 和 Web 服务器
 fastapi==0.111.0
 uvicorn[standard]==0.30.1
 pydantic==2.7.4
 pydantic-settings==2.1.0
 python-multipart==0.0.9
+
+# WebSocket 支持
 websockets==12.0
-psutil==5.9.8
-subprocess32==3.5.4 ; python_version < "3.0"
-requests==2.32.3
-redis==5.0.8
-python-dotenv==1.0.1
-loguru==0.7.2
-torch==2.3.1
-transformers>=4.56.0,<5
-accelerate>=0.30.0
-scrcpy-client==0.4.1
-adbutils>=0.14.1,<0.15.0
-opencv-python>=4.5.3,<5.0.0
-deprecation>=2.1.0
-apkutils2>=1.0.0,<2.0.0
-retry>=0.9
-whichcraft
-aiortc>=1.6.0
 python-socketio>=5.11.0
-# 提示: av(PyAV) 建议通过 conda 安装 (如 conda install -c conda-forge av)
+
+# ==================== 系统工具 ====================
+# 进程管理
+psutil==5.9.8
+
+# 环境变量管理
+python-dotenv==1.0.1
+
+# 日志工具
+loguru==0.7.2
+
+# ==================== AI 模型相关（仅本地部署时需要）====================
+# 注意: 如果使用远程 API 服务（智谱 AI、ModelScope 等），以下依赖可以不安装
+# 如果需要本地部署 AutoGLM-Phone-9B 模型，请安装以下依赖:
+# torch==2.3.1
+# transformers>=4.56.0,<5
+# accelerate>=0.30.0
+# vllm>=0.12.0
+
+# ==================== 项目依赖说明 ====================
+# 以下依赖在当前代码中未直接使用，但可能被 Open-AutoGLM 项目使用
+# 如果遇到 Open-AutoGLM 运行错误，可以取消注释相关依赖
+
+# ADB 工具（Open-AutoGLM 可能需要）
+# adbutils>=0.14.1,<0.15.0
+
+# 图像处理（Open-AutoGLM 可能需要）
+# opencv-python>=4.5.3,<5.0.0
+
+# APK 工具（Open-AutoGLM 可能需要）
+# apkutils2>=1.0.0,<2.0.0
+
+# 其他工具
+# deprecation>=2.1.0
+# retry>=0.9
+# whichcraft
+
+# ==================== 已移除的依赖 ====================
+# 以下依赖在项目中未使用，已移除:
+# - subprocess32: Python 3 已内置 subprocess 模块
+# - requests: 项目中未使用 HTTP 客户端
+# - redis: 项目中未使用 Redis
+# - scrcpy-client: 项目使用自定义 scrcpy 协议实现
+# - aiortc: 项目中未使用 WebRTC
