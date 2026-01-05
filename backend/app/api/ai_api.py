@@ -1,14 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends
-from app.models.ai_models import NLCommand, AIResponse
+from app.models.ai_models import NLCommand, NLCommandRequest, AIResponse
 from app.services.ai_service import AIService
 
 router = APIRouter()
 ai_service = AIService()
 
 @router.post("/command/{device_id}", response_model=AIResponse)
-async def execute_nl_command(device_id: str, nl_command: NLCommand):
+async def execute_nl_command(device_id: str, nl_command: NLCommandRequest):
     """执行自然语言指令"""
     try:
+        # 使用 URL 中的 device_id，忽略请求体中的 device_id
         result = await ai_service.execute_natural_language_command(
             device_id=device_id,
             command=nl_command.command,

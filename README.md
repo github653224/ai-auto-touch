@@ -107,31 +107,34 @@ AI 会自动：
 
 ### 环境要求
 
-- **Python**: 3.8 - 3.11（推荐 3.10）
-- **Node.js**: 14 - 18（推荐 16 LTS）
+- **Python**: 3.10 - 3.12（推荐 3.12）
+- **Node.js**: 16 - 20（推荐 18 LTS）
 - **ADB**: Android Debug Bridge
-- **scrcpy**: 屏幕镜像工具
-- **GPU**: 推荐 NVIDIA GPU（用于 AI 模型推理）
+- **操作系统**: macOS / Linux / Windows
+
+> ⚠️ **重要提示**: 
+> - 必须使用 Python 虚拟环境（venv 或 conda），避免依赖冲突
+> - 后端和 Open-AutoGLM 需要在同一个虚拟环境中运行
+> - 推荐使用 conda 管理 Python 环境
 
 ### 安装依赖
 
-#### 1. 安装 ADB 和 scrcpy
+#### 1. 安装 ADB
 
 **macOS:**
 ```bash
-brew install android-platform-tools scrcpy
+brew install android-platform-tools
 ```
 
 **Ubuntu/Linux:**
 ```bash
 sudo apt update
-sudo apt install android-tools-adb scrcpy
+sudo apt install android-tools-adb
 ```
 
 **Windows:**
 - 下载 [Platform Tools](https://developer.android.com/studio/releases/platform-tools)
-- 下载 [scrcpy](https://github.com/Genymobile/scrcpy/releases)
-- 添加到系统环境变量
+- 解压并添加到系统环境变量 PATH
 
 #### 2. 克隆项目
 
@@ -140,7 +143,77 @@ git clone https://github.com/your-username/ai-auto-touch.git
 cd ai-auto-touch
 ```
 
-#### 3. 部署 AI 模型服务
+#### 3. 创建 Python 虚拟环境（重要！）
+
+**使用 conda（推荐）:**
+```bash
+# 创建虚拟环境
+conda create -n ai-auto-touch python=3.12 -y
+
+# 激活环境
+conda activate ai-auto-touch
+```
+
+**使用 venv:**
+```bash
+# 创建虚拟环境
+python3 -m venv venv
+
+# 激活环境
+# macOS/Linux:
+source venv/bin/activate
+
+# Windows:
+venv\Scripts\activate
+```
+
+> ⚠️ **重要**: 后续所有安装和运行命令都必须在激活的虚拟环境中执行！
+
+#### 4. 安装后端依赖
+
+```bash
+cd backend
+
+# 安装后端依赖
+pip install -r requirements.txt
+
+# 安装 Open-AutoGLM 依赖（重要！）
+pip install -r ../Open-AutoGLM/requirements.txt
+
+# 或使用 uv（更快）
+uv pip install -r requirements.txt
+uv pip install -r ../Open-AutoGLM/requirements.txt
+```
+
+> 💡 **说明**: 
+> - 后端服务会调用 Open-AutoGLM，两者必须在同一虚拟环境中
+> - 如果缺少 Open-AutoGLM 依赖，AI 控制功能会报错 `ModuleNotFoundError`
+
+#### 5. 配置环境变量
+
+```bash
+# 在 backend 目录下
+cp .env.example .env
+
+# 编辑 .env 文件，配置 AI 模型服务
+# 使用远程 API（推荐新手）
+nano .env  # 或使用其他编辑器
+```
+
+**.env 配置示例（智谱 AI）:**
+```bash
+# AI 模型配置
+AUTOGLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4
+AUTOGLM_MODEL_NAME=autoglm-phone
+AUTOGLM_API_KEY=your-api-key-here  # 替换为你的 API Key
+
+# 服务端口
+BACKEND_PORT=8001
+```
+
+> 📖 获取 API Key: 访问 [智谱 AI 开放平台](https://open.bigmodel.cn/) 注册并获取
+
+#### 6. 部署 AI 模型服务
 
 本项目使用 [Open-AutoGLM](https://github.com/THUDM/AutoGLM) 的 AutoGLM-Phone-9B 模型。支持两种部署方式：
 
@@ -230,60 +303,38 @@ bash start_model.sh
 
 > 💡 **提示**: 模型文件约 19GB，已在 `.gitignore` 中配置，不会被推送到 GitHub。用户需要自行下载。
 
-#### 4. 启动后端服务
+#### 7. 启动后端服务
 
-**macOS / Linux:**
+**使用启动脚本（推荐）:**
 ```bash
 cd backend
 bash start_backend.sh
 ```
 
-**Windows:**
-```cmd
-cd backend
-start_backend.bat
-```
+启动脚本会自动：
+- ✅ 检测并使用当前激活的虚拟环境
+- ✅ 如果未激活环境，提供交互式选择
+- ✅ 检查端口占用并提供处理选项
+- ✅ 验证 AI 模型服务配置
+- ✅ 检查并安装缺失的依赖
 
-**手动启动（所有平台）:**
+**手动启动:**
 ```bash
 cd backend
 
-# 创建虚拟环境（推荐）
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 或使用 conda
-# conda create -n ai-auto-touch python=3.10
-# conda activate ai-auto-touch
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 配置环境变量（如果还没配置）
-cp .env.example .env
-# 编辑 .env 文件，填入你的模型配置
+# 确保虚拟环境已激活
+# conda activate ai-auto-touch  # 或 source venv/bin/activate
 
 # 启动服务
 uvicorn main:socket_app --host 0.0.0.0 --port 8001 --reload
 ```
 
-后端服务启动后，访问 http://localhost:8001/docs 查看 API 文档。
+**验证后端服务:**
+- API 文档: http://localhost:8001/docs
+- 健康检查: http://localhost:8001/api/v1/health
 
-#### 5. 启动前端服务
+#### 8. 安装前端依赖并启动
 
-**macOS / Linux:**
-```bash
-cd frontend
-bash start_frontend.sh
-```
-
-**Windows:**
-```cmd
-cd frontend
-start_frontend.bat
-```
-
-**手动启动（所有平台）:**
 ```bash
 cd frontend
 
@@ -291,14 +342,20 @@ cd frontend
 npm install
 
 # 启动开发服务器
-npm run dev -- --host --port 3002 --clearScreen false
+npm run dev -- --host --port 3002
 ```
 
-前端服务启动后，访问 http://localhost:3002
+**或使用启动脚本:**
+```bash
+cd frontend
+bash start_frontend.sh
+```
 
-> 💡 **提示**: 使用 `--host` 参数可以让局域网内其他设备访问
+**访问前端:**
+- 本地访问: http://localhost:3002
+- 局域网访问: http://你的IP:3002
 
-#### 6. 一键启动（推荐）
+#### 9. 一键启动（推荐）
 
 **macOS / Linux:**
 ```bash
@@ -326,7 +383,7 @@ bash start_all.sh
 
 > 📖 **详细说明**: 查看 [启动脚本使用说明](启动脚本使用说明.md)
 
-#### 7. 启动服务说明
+#### 10. 启动服务说明
 
 根据你选择的 AI 模型部署方式，启动流程略有不同：
 
@@ -396,6 +453,118 @@ bash kill_ports.sh
    - 打开浏览器访问 http://localhost:3002
    - 点击"扫描设备"按钮
    - 选择设备并点击"连接"
+
+## ⚠️ 常见问题
+
+### 1. ModuleNotFoundError: No module named 'openai'
+
+**问题**: AI 控制功能报错，提示缺少 openai 模块
+
+**原因**: Open-AutoGLM 的依赖未安装
+
+**解决方案**:
+```bash
+# 确保在虚拟环境中
+conda activate ai-auto-touch  # 或 source venv/bin/activate
+
+# 安装 Open-AutoGLM 依赖
+cd backend
+pip install -r ../Open-AutoGLM/requirements.txt
+```
+
+### 2. 后端启动失败：端口被占用
+
+**问题**: 启动时提示端口 8001 已被占用
+
+**解决方案**:
+```bash
+# 方式 1: 使用启动脚本（会自动处理）
+bash start_backend.sh  # 选择自动停止并重启
+
+# 方式 2: 手动清理端口
+bash kill_ports.sh
+
+# 方式 3: 手动查找并停止进程
+lsof -ti :8001 | xargs kill -9
+```
+
+### 3. ADB 命令找不到
+
+**问题**: 执行 adb 命令时提示 `command not found`
+
+**解决方案**:
+```bash
+# macOS
+brew install android-platform-tools
+
+# 验证安装
+adb version
+```
+
+### 4. 虚拟环境问题
+
+**问题**: 启动脚本提示未找到虚拟环境
+
+**解决方案**:
+```bash
+# 创建 conda 环境
+conda create -n ai-auto-touch python=3.12 -y
+conda activate ai-auto-touch
+
+# 或创建 venv 环境
+python3 -m venv venv
+source venv/bin/activate  # macOS/Linux
+# venv\Scripts\activate  # Windows
+
+# 重新安装依赖
+cd backend
+pip install -r requirements.txt
+pip install -r ../Open-AutoGLM/requirements.txt
+```
+
+### 5. AI 控制返回 422 错误
+
+**问题**: 发送 AI 指令时返回 422 Unprocessable Entity
+
+**原因**: 请求参数格式不正确
+
+**解决方案**: 确保请求体格式正确，`device_id` 应该在 URL 路径中，不在请求体中
+
+```json
+// 正确的请求格式
+POST /api/v1/ai/command/DEVICE_ID
+{
+  "command": "打开微信",
+  "verbose": false,
+  "max_steps": 10
+}
+```
+
+### 6. 前端无法连接后端
+
+**问题**: 前端页面无法获取设备列表
+
+**解决方案**:
+1. 检查后端服务是否正常运行: http://localhost:8001/docs
+2. 检查浏览器控制台是否有 CORS 错误
+3. 确认前端配置的 API 地址正确
+
+### 7. Python 版本不兼容
+
+**问题**: 安装依赖时报错，提示 Python 版本不支持
+
+**解决方案**:
+```bash
+# 使用推荐的 Python 版本
+conda create -n ai-auto-touch python=3.12 -y
+conda activate ai-auto-touch
+
+# 重新安装依赖
+pip install -r backend/requirements.txt
+pip install -r Open-AutoGLM/requirements.txt
+```
+
+> 📖 更多问题请查看 [故障排除文档](TROUBLESHOOTING.md)
 
 ### 服务端口说明
 
@@ -583,13 +752,25 @@ ai-auto-touch/
 
 我们欢迎所有形式的贡献！请查看 [贡献指南](CONTRIBUTING.md) 了解详情。
 
+### 分支策略
+
+项目采用 Git Flow 简化版本进行开发：
+
+- `master` - 生产环境分支，稳定版本
+- `develop` - 开发主分支，日常开发合并到这里
+- `feature/*` - 功能开发分支
+- `bugfix/*` - Bug 修复分支
+- `hotfix/*` - 紧急修复分支
+
+详细说明请查看 [分支管理策略](.github/BRANCH_STRATEGY.md)
+
 ### 如何贡献
 
 1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+2. 从 develop 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'feat: Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
+5. 创建 Pull Request 到 develop 分支
 
 ### 开发文档
 

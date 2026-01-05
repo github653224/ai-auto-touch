@@ -545,17 +545,44 @@ class PhoneControlService:
                 y2 = height // 5
                 await self.swipe(device_id, x, y1, x, y2, 500)
             
-            logger.info(f"设备 {device_id}: 解锁屏幕")
+            logger.info(f"设备 {device_id}: 向上滑动屏幕")
             return {
                 "success": True,
                 "action": "unlock_screen",
-                "message": "屏幕已解锁"
+                "message": "向上滑动完成"
             }
         except Exception as e:
-            logger.error(f"设备 {device_id}: 解锁屏幕失败 - {str(e)}")
+            logger.error(f"设备 {device_id}: 向上滑动失败 - {str(e)}")
             return {
                 "success": False,
                 "action": "unlock_screen",
+                "error": str(e)
+            }
+    
+    async def swipe_down(self, device_id: str) -> Dict[str, Any]:
+        """向下滑动屏幕"""
+        try:
+            # 获取屏幕尺寸
+            screen_size = await self.get_screen_size(device_id)
+            if screen_size.get("success"):
+                width = screen_size["width"]
+                height = screen_size["height"]
+                x = width // 2
+                y1 = height // 5
+                y2 = height * 4 // 5
+                await self.swipe(device_id, x, y1, x, y2, 500)
+            
+            logger.info(f"设备 {device_id}: 向下滑动屏幕")
+            return {
+                "success": True,
+                "action": "swipe_down",
+                "message": "向下滑动完成"
+            }
+        except Exception as e:
+            logger.error(f"设备 {device_id}: 向下滑动失败 - {str(e)}")
+            return {
+                "success": False,
+                "action": "swipe_down",
                 "error": str(e)
             }
     

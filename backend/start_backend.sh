@@ -53,32 +53,144 @@ fi
 #------------------------------------------------------------------------------
 # 激活 Python 环境
 #------------------------------------------------------------------------------
-# 检查是否使用 conda
-if command -v conda &> /dev/null; then
-    echo "检测到 conda，尝试激活环境: ${CONDA_ENV_NAME}..."
-    
-    # 初始化 conda
-    eval "$(conda shell.bash hook)"
-    
-    # 激活 conda 环境
-    if conda activate ${CONDA_ENV_NAME} 2>/dev/null; then
-        echo "✓ 已激活 conda 环境: ${CONDA_ENV_NAME}"
+echo ""
+echo "=========================================="
+echo "Python 环境配置"
+echo "=========================================="
+
+# 检查当前是否已在虚拟环境中
+if [ -n "$VIRTUAL_ENV" ] || [ -n "$CONDA_DEFAULT_ENV" ]; then
+    if [ -n "$CONDA_DEFAULT_ENV" ]; then
+        echo "✓ 检测到已激活的 conda 环境: ${CONDA_DEFAULT_ENV}"
     else
-        echo "⚠️  conda 环境 ${CONDA_ENV_NAME} 不存在"
-        echo "提示: 创建环境: conda create -n ${CONDA_ENV_NAME} python=3.10"
-        echo "将使用系统默认 Python 环境"
+        echo "✓ 检测到已激活的虚拟环境: ${VIRTUAL_ENV}"
+    fi
+    echo ""
+    read -p "是否使用当前环境？(y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "✓ 使用当前环境"
+    else
+        echo "请先退出当前环境，然后重新运行此脚本"
+        exit 1
     fi
 else
-    # 检查是否有虚拟环境
-    if [ -d "venv" ]; then
-        echo "检测到虚拟环境，激活中..."
-        source venv/bin/activate
-        echo "✓ 已激活虚拟环境"
-    else
-        echo "使用系统默认 Python 环境"
-        echo "提示: 建议创建虚拟环境: python -m venv venv"
-    fi
+    # 未检测到激活的环境，询问用户
+    echo "未检测到已激活的虚拟环境"
+    echo ""
+    echo "请选择 Python 环境："
+    echo "  1) 使用 conda 环境"
+    echo "  2) 使用 venv 虚拟环境"
+    echo "  3) 创建新的 conda 环境"
+    echo "  4) 创建新的 venv 虚拟环境"
+    echo "  5) 使用系统 Python（不推荐）"
+    echo ""
+    read -p "请输入选项 [1-5]: " -n 1 -r
+    echo
+    echo ""
+    
+    case $REPLY in
+        1)
+            # 使用现有 conda 环境
+            if command -v conda &> /dev/null; then
+                eval "$(conda shell.bash hook)"
+                
+                # 列出所有 conda 环境
+                echo "可用的 conda 环境："
+                conda env list | grep -v "^#" | awk '{print "  - " $1}'
+                echo ""
+                read -p "请输入要使用的环境名称 [默认: ${CONDA_ENV_NAME}]: " USER_ENV
+                USER_ENV=${USER_ENV:-$CONDA_ENV_NAME}
+                
+                if conda activate ${USER_ENV} 2>/dev/null; then
+                    echo "✓ 已激活 conda 环境: ${USER_ENV}"
+                else
+                    echo "❌ 无法激活环境: ${USER_ENV}"
+                    echo "提示: 请检查环境名称是否正确"
+                    exit 1
+                fi
+            else
+                echo "❌ 未安装 conda"
+                exit 1
+            fi
+            ;;
+        2)
+            # 使用现有 venv 环境
+            read -p "请输入虚拟环境路径 [默认: venv]: " VENV_PATH
+            VENV_PATH=${VENV_PATH:-venv}
+            
+            if [ -d "$VENV_PATH" ]; then
+                source ${VENV_PATH}/bin/activate
+                echo "✓ 已激活虚拟环境: ${VENV_PATH}"
+            else
+                echo "❌ 虚拟环境不存在: ${VENV_PATH}"
+                exit 1
+            fi
+            ;;
+        3)
+            # 创建新的 conda 环境
+            if command -v conda &> /dev/null; then
+                eval "$(conda shell.bash hook)"
+                
+                read -p "请输入新环境名称 [默认: ${CONDA_ENV_NAME}]: " NEW_ENV
+                NEW_ENV=${NEW_ENV:-$CONDA_ENV_NAME}
+                
+                read -p "请输入 Python 版本 [默认: 3.12]: " PY_VERSION
+                PY_VERSION=${PY_VERSION:-3.12}
+                
+                echo "创建 conda 环境: ${NEW_ENV} (Python ${PY_VERSION})..."
+                conda create -n ${NEW_ENV} python=${PY_VERSION} -y
+                
+                if conda activate ${NEW_ENV} 2>/dev/null; then
+                    echo "✓ 已创建并激活 conda 环境: ${NEW_ENV}"
+                else
+                    echo "❌ 创建环境失败"
+                    exit 1
+                fi
+            else
+                echo "❌ 未安装 conda"
+                exit 1
+            fi
+            ;;
+        4)
+            # 创建新的 venv 环境
+            read -p "请输入虚拟环境路径 [默认: venv]: " VENV_PATH
+            VENV_PATH=${VENV_PATH:-venv}
+            
+            echo "创建虚拟环境: ${VENV_PATH}..."
+            python3 -m venv ${VENV_PATH}
+            
+            if [ -d "$VENV_PATH" ]; then
+                source ${VENV_PATH}/bin/activate
+                echo "✓ 已创建并激活虚拟环境: ${VENV_PATH}"
+            else
+                echo "❌ 创建虚拟环境失败"
+                exit 1
+            fi
+            ;;
+        5)
+            # 使用系统 Python
+            echo "⚠️  使用系统 Python 环境（不推荐）"
+            echo "提示: 建议使用虚拟环境以避免依赖冲突"
+            ;;
+        *)
+            echo "❌ 无效选项"
+            exit 1
+            ;;
+    esac
 fi
+
+# 显示当前 Python 信息
+echo ""
+echo "当前 Python 环境信息："
+echo "  Python 版本: $(python --version 2>&1)"
+echo "  Python 路径: $(which python)"
+if [ -n "$CONDA_DEFAULT_ENV" ]; then
+    echo "  Conda 环境: ${CONDA_DEFAULT_ENV}"
+elif [ -n "$VIRTUAL_ENV" ]; then
+    echo "  虚拟环境: ${VIRTUAL_ENV}"
+fi
+echo ""
 
 #------------------------------------------------------------------------------
 # 检查端口占用
