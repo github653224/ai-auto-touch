@@ -87,28 +87,48 @@ class DeviceManager:
             android_result = await run_adb_command(f"-s {device_id} shell getprop ro.build.version.release")
             # 获取设备名称
             name_result = await run_adb_command(f"-s {device_id} shell getprop ro.product.name")
+            # 获取屏幕尺寸
+            screen_result = await run_adb_command(f"-s {device_id} shell wm size")
+            # 获取电池电量
+            battery_result = await run_adb_command(f"-s {device_id} shell dumpsys battery | grep level")
             
-            model = model_result.stdout.strip() if model_result.stdout else None
-            android_version = android_result.stdout.strip() if android_result.stdout else None
-            name = name_result.stdout.strip() if name_result.stdout else None
+            model = model_result.stdout.strip() if model_result.stdout else "未知型号"
+            android_version = android_result.stdout.strip() if android_result.stdout else "未知版本"
+            name = name_result.stdout.strip() if name_result.stdout else "未知设备"
+            
+            # 解析屏幕尺寸: Physical size: 1080x2400
+            screen_size = None
+            if screen_result.stdout:
+                import re
+                match = re.search(r'(\d+x\d+)', screen_result.stdout)
+                if match:
+                    screen_size = match.group(1)
+            
+            # 解析电池电量: level: 85
+            battery = None
+            if battery_result.stdout:
+                import re
+                match = re.search(r'level:\s*(\d+)', battery_result.stdout)
+                if match:
+                    battery = f"{match.group(1)}%"
             
             return DeviceInfo(
                 device_id=device_id,
-                name=name if name else None,
-                model=model if model else None,
-                android_version=android_version if android_version else None,
+                name=name,
+                model=model,
+                android_version=android_version,
                 status="connected",
-                screen_size=None,
-                battery=None
+                screen_size=screen_size,
+                battery=battery
             )
         except Exception as e:
             logger.warning(f"获取设备 {device_id} 详细信息失败: {str(e)}，使用基本信息")
             # 即使获取详细信息失败，也返回基本设备信息
             return DeviceInfo(
                 device_id=device_id,
-                name=None,
-                model=None,
-                android_version=None,
+                name="未知设备",
+                model="未知型号",
+                android_version="未知版本",
                 status="connected",
                 screen_size=None,
                 battery=None
