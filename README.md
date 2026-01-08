@@ -23,11 +23,17 @@
 
 <div align="center">
 
-### [🔥 在 B 站观看完整功能演示](https://www.bilibili.com/video/BV17kieBJEB3/)
+### [🔥 点击观看完整功能演示](https://www.bilibili.com/video/BV17kieBJEB3/)
 
 **ai-auto-touch 重磅开源免费！在网页端 AI 批量操作手机**
 
-[![B站视频](https://img.shields.io/badge/B站-观看视频-00A1D6?logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV17kieBJEB3/)
+<a href="https://www.bilibili.com/video/BV17kieBJEB3/" target="_blank">
+  <img src="docs/images/ai智能控制.png" alt="视频演示 - 点击观看" width="800"/>
+  <br/>
+  <img src="https://img.shields.io/badge/▶️_点击观看完整视频-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white" alt="点击观看"/>
+</a>
+
+*👆 点击图片在 B 站观看完整功能演示*
 
 </div>
 
