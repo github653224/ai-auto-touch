@@ -13,6 +13,22 @@
 
 **📚 文档导航**: [快速开始](docs/QUICK_START.md) | [手机控制](docs/PHONE_CONTROL.md) | [模型设置](docs/MODEL_SETUP.md) | [故障排除](TROUBLESHOOTING.md)
 
+**🎬 视频演示**: [在 B 站观看功能展示](https://www.bilibili.com/video/BV17kieBJEB3/) - AI 批量操作手机演示
+
+</div>
+
+---
+
+## 🎥 视频演示
+
+<div align="center">
+
+### [🔥 在 B 站观看完整功能演示](https://www.bilibili.com/video/BV17kieBJEB3/)
+
+**ai-auto-touch 重磅开源免费！在网页端 AI 批量操作手机**
+
+[![B站视频](https://img.shields.io/badge/B站-观看视频-00A1D6?logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV17kieBJEB3/)
+
 </div>
 
 ---
