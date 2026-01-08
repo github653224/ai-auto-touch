@@ -13,6 +13,22 @@
 
 **📚 文档导航**: [快速开始](docs/QUICK_START.md) | [手机控制](docs/PHONE_CONTROL.md) | [模型设置](docs/MODEL_SETUP.md) | [故障排除](TROUBLESHOOTING.md)
 
+**🎬 视频演示**: [在 B 站观看功能展示](https://www.bilibili.com/video/BV17kieBJEB3/) - AI 批量操作手机演示
+
+</div>
+
+---
+
+## 🎥 视频演示
+
+<div align="center">
+
+### [🔥 在 B 站观看完整功能演示](https://www.bilibili.com/video/BV17kieBJEB3/)
+
+**ai-auto-touch 重磅开源免费！在网页端 AI 批量操作手机**
+
+[![B站视频](https://img.shields.io/badge/B站-观看视频-00A1D6?logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV17kieBJEB3/)
+
 </div>
 
 ---
@@ -800,9 +816,9 @@ ai-auto-touch/
 
 ## 📮 联系方式
 
-- 💬 提交 Issue: [GitHub Issues](https://github.com/your-username/ai-auto-touch/issues)
-- 📧 邮箱: your-email@example.com
-- 🌐 官网: https://your-website.com
+- 💬 提交 Issue: [GitHub Issues](https://github.com/github653224/ai-auto-touch/issues)
+- 📧 邮箱: 944851899@qq.com
+- 🌐 官网: 热爱技术的小牛
 
 ## 📊 项目状态
 
