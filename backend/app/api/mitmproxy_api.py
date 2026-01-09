@@ -104,7 +104,7 @@ async def proxy_mitmweb(device_id: str, path: str, request: Request):
             status_code=503
         )
     except Exception as e:
-        logger.error(f"代理请求失败: {e}")
+        logger.error(f"代理请求失败: {e}", exc_info=True)
         return Response(
             content=f"Proxy error: {str(e)}",
             status_code=500
