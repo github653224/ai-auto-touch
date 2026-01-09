@@ -34,13 +34,58 @@ const CaptureView: React.FC = () => {
   const { deviceId } = useParams<{ deviceId: string }>();
   const navigate = useNavigate();
   const [isControlling, setIsControlling] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [screenSize, setScreenSize] = useState<{ width: number; height: number } | null>(null);
 
   if (!deviceId) {
     return <div>设备 ID 不存在</div>;
   }
 
+  // 获取屏幕尺寸
+  React.useEffect(() => {
+    phoneControlApi.getScreenSize(deviceId)
+      .then(res => {
+        if (res.data.success) {
+          setScreenSize({ width: res.data.width, height: res.data.height });
+          console.log('屏幕尺寸:', res.data.width, 'x', res.data.height);
+        }
+      })
+      .catch(err => console.error('获取屏幕尺寸失败:', err));
+  }, [deviceId]);
+
   const handleBack = () => {
     navigate('/');
+  };
+
+  // 处理屏幕点击
+  const handleScreenClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!screenSize || isControlling) return;
+    
+    const container = e.currentTarget;
+    const rect = container.getBoundingClientRect();
+    
+    // 计算点击位置相对于容器的比例
+    const relativeX = (e.clientX - rect.left) / rect.width;
+    const relativeY = (e.clientY - rect.top) / rect.height;
+    
+    // 转换为设备坐标
+    const deviceX = Math.round(relativeX * screenSize.width);
+    const deviceY = Math.round(relativeY * screenSize.height);
+    
+    console.log('点击屏幕:', { relativeX, relativeY, deviceX, deviceY });
+    
+    setIsControlling(true);
+    try {
+      const response = await phoneControlApi.tap(deviceId, { x: deviceX, y: deviceY });
+      if (response.data.success) {
+        message.success(`已点击 (${deviceX}, ${deviceY})`, 0.5);
+      }
+    } catch (error) {
+      message.error('点击失败');
+      console.error('点击失败:', error);
+    } finally {
+      setIsControlling(false);
+    }
   };
 
   // 通用控制处理函数
@@ -56,6 +101,35 @@ const CaptureView: React.FC = () => {
     } catch (error) {
       message.error(`${actionName}失败`);
       console.error(`${actionName}失败:`, error);
+    } finally {
+      setIsControlling(false);
+    }
+  };
+
+  // 切换通知栏
+  const handleToggleNotification = async () => {
+    if (isControlling) return;
+    
+    setIsControlling(true);
+    try {
+      if (notificationOpen) {
+        // 关闭通知栏
+        const response = await phoneControlApi.closeNotification(deviceId);
+        if (response.data.success) {
+          setNotificationOpen(false);
+          message.success('通知栏已关闭', 1);
+        }
+      } else {
+        // 打开通知栏
+        const response = await phoneControlApi.openNotification(deviceId);
+        if (response.data.success) {
+          setNotificationOpen(true);
+          message.success('通知栏已打开', 1);
+        }
+      }
+    } catch (error) {
+      message.error('操作失败');
+      console.error('切换通知栏失败:', error);
     } finally {
       setIsControlling(false);
     }
@@ -121,17 +195,21 @@ const CaptureView: React.FC = () => {
                 marginTop: 0,
                 marginBottom: 0,
               }}>
-                <div style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: 20,
-                  overflow: 'hidden',
-                  backgroundColor: '#000',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  position: 'relative',
-                }}>
+                <div 
+                  onClick={handleScreenClick}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: 20,
+                    overflow: 'hidden',
+                    backgroundColor: '#000',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    position: 'relative',
+                    cursor: screenSize ? 'pointer' : 'default',
+                  }}
+                >
                   <ScrcpyPlayer 
                     deviceId={deviceId}
                     onReady={handleVideoReady}
@@ -321,16 +399,17 @@ const CaptureView: React.FC = () => {
                       右滑
                     </Button>
                   </Tooltip>
-                  <Tooltip title="打开通知栏" placement="right">
+                  <Tooltip title={notificationOpen ? "关闭通知栏" : "打开通知栏"} placement="right">
                     <Button 
                       icon={<BellOutlined />} 
                       size="small" 
                       block 
+                      type={notificationOpen ? "primary" : "default"}
                       style={{ fontSize: 11, height: 28, padding: '0 4px' }}
-                      onClick={() => handleControl(() => phoneControlApi.openNotification(deviceId), '打开通知栏')}
+                      onClick={handleToggleNotification}
                       disabled={isControlling}
                     >
-                      通知
+                      {notificationOpen ? '关闭' : '通知'}
                     </Button>
                   </Tooltip>
                 </div>
