@@ -129,6 +129,13 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
             <span className="proxy-hint">
               (在手机 WiFi 设置中配置此代理)
             </span>
+            <Button 
+              size="small" 
+              onClick={() => window.location.reload()}
+              style={{ marginLeft: 16 }}
+            >
+              刷新页面
+            </Button>
           </div>
         </div>
       )}

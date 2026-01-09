@@ -128,9 +128,9 @@ async def disconnect(sid: str) -> None:
             
             # 如果没有客户端了，延迟停止该设备的流（给其他客户端连接的时间）
             if not clients:
-                logger.info(f"No more clients for device {device_id}, scheduling stream stop in 2 seconds")
-                # 延迟 2 秒停止，避免页面切换时立即停止
-                await asyncio.sleep(2)
+                logger.info(f"No more clients for device {device_id}, scheduling stream stop in 5 seconds")
+                # 延迟 5 秒停止，避免页面切换时立即停止
+                await asyncio.sleep(5)
                 # 再次检查是否有新客户端连接
                 if device_id in _device_clients and not _device_clients[device_id]:
                     logger.info(f"Still no clients for device {device_id}, stopping stream now")
