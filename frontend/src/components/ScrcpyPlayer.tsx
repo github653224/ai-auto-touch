@@ -233,6 +233,7 @@ export const ScrcpyPlayer = ({
     if (!deviceId) return
 
     let mounted = true
+    let cleanupDone = false
     hasReceivedDataRef.current = false
 
     const connect = async () => {
@@ -244,6 +245,7 @@ export const ScrcpyPlayer = ({
           path: '/socket.io',
           transports: ['websocket'],
           timeout: 10000,
+          reconnection: false, // 禁用自动重连，避免冲突
         })
 
         socketRef.current = socket
@@ -332,20 +334,47 @@ export const ScrcpyPlayer = ({
 
     return () => {
       mounted = false
+      
+      // 防止重复清理
+      if (cleanupDone) return
+      cleanupDone = true
+      
+      console.log(`🧹 清理 ScrcpyPlayer 资源 (设备: ${deviceId})`)
+      
+      // 1. 先断开 socket 连接
+      if (socketRef.current) {
+        try {
+          socketRef.current.disconnect()
+          console.log('✅ Socket 已断开')
+        } catch (e) {
+          console.error('断开 Socket 失败:', e)
+        }
+        socketRef.current = null
+      }
+      
+      // 2. 清理解码器
       if (decoderRef.current) {
         try {
           decoderRef.current.dispose()
+          console.log('✅ 解码器已释放')
         } catch (e) {
           console.error('关闭解码器失败:', e)
         }
         decoderRef.current = null
       }
-      if (socketRef.current) {
-        socketRef.current.disconnect()
-        socketRef.current = null
+      
+      // 3. 清理 canvas
+      if (canvasRef.current && canvasRef.current.parentElement) {
+        try {
+          canvasRef.current.parentElement.removeChild(canvasRef.current)
+          console.log('✅ Canvas 已移除')
+        } catch (e) {
+          console.error('移除 Canvas 失败:', e)
+        }
       }
-      // 清理 canvas
       canvasRef.current = null
+      
+      console.log(`✅ ScrcpyPlayer 清理完成 (设备: ${deviceId})`)
     }
   }, [deviceId, maxSize, bitRate, createDecoder, setupVideoStream, onReady, onError])
 

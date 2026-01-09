@@ -1,0 +1,19 @@
+/* 抓包页面样式 - 使用内联样式为主，这里只保留必要的全局样式 */
+
+/* 如果需要自定义滚动条样式 */
+.ant-col::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ant-col::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.ant-col::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.ant-col::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

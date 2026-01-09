@@ -24,7 +24,8 @@ import {
   LinkOutlined, 
   DisconnectOutlined,
   MonitorOutlined,
-  RobotOutlined
+  RobotOutlined,
+  ApiOutlined
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 
@@ -95,6 +96,12 @@ const DeviceManager = () => {
   const handleAIControl = (deviceId: string) => {
     dispatch(selectDevice(deviceId))
     navigate('/ai')
+  }
+  
+  // 抓包
+  const handleCapture = (deviceId: string) => {
+    dispatch(selectDevice(deviceId))
+    navigate(`/device/${deviceId}/capture`)
   }
   
   // 表格列配置
@@ -172,6 +179,14 @@ const DeviceManager = () => {
             onClick={() => handleAIControl(record.device_id)}
           >
             AI控制
+          </Button>
+          <Button 
+            icon={<ApiOutlined />} 
+            size="small"
+            disabled={record.status !== 'connected'}
+            onClick={() => handleCapture(record.device_id)}
+          >
+            抓包
           </Button>
         </Space>
       ),
