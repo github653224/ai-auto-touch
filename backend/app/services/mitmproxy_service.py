@@ -29,6 +29,18 @@ class MitmproxyService:
         # mitmproxy 证书路径
         self.mitm_cert_path = Path.home() / ".mitmproxy"
     
+    def _get_local_ip(self) -> str:
+        """获取本机局域网 IP 地址"""
+        try:
+            # 创建一个 UDP socket 连接到外部地址（不会真正发送数据）
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            return local_ip
+        except Exception:
+            return "127.0.0.1"
+    
     def _find_free_port(self, start_port: int, max_attempts: int = 50) -> int:
         """查找可用端口"""
         for i in range(max_attempts):
@@ -84,6 +96,7 @@ class MitmproxyService:
                     "device_id": device_id,
                     "proxy_port": process_info["proxy_port"],
                     "web_port": process_info["web_port"],
+                    "proxy_host": self._get_local_ip(),
                     "proxy_url": f"/api/v1/mitmproxy/proxy/{device_id}/",
                     "message": "mitmweb already running"
                 }
@@ -95,9 +108,10 @@ class MitmproxyService:
             # 启动 mitmweb 进程
             cmd = [
                 "mitmweb",
+                "--listen-host", "0.0.0.0",  # 监听所有网络接口，允许手机连接
                 "--listen-port", str(proxy_port),
+                "--web-host", "127.0.0.1",  # Web 界面只监听本地
                 "--web-port", str(web_port),
-                "--web-host", "127.0.0.1",  # 只监听本地
                 "--no-web-open-browser",
                 "--set", "block_global=false",
             ]
@@ -135,6 +149,7 @@ class MitmproxyService:
                 "device_id": device_id,
                 "proxy_port": proxy_port,
                 "web_port": web_port,
+                "proxy_host": self._get_local_ip(),
                 "proxy_url": f"/api/v1/mitmproxy/proxy/{device_id}/",
                 "message": "mitmweb started successfully"
             }
@@ -222,6 +237,7 @@ class MitmproxyService:
                 "device_id": device_id,
                 "proxy_port": process_info["proxy_port"],
                 "web_port": process_info["web_port"],
+                "proxy_host": self._get_local_ip(),
                 "pid": process_info["pid"],
                 "proxy_url": f"/api/v1/mitmproxy/proxy/{device_id}/"
             }

@@ -126,7 +126,10 @@ AI 会自动：
 - 右侧显示 mitmproxy Web 界面，实时查看网络流量
 - 支持同时操作和抓包，提高测试效率
 
-> 📖 详细配置请查看 [抓包功能文档](docs/CAPTURE_PAGE_IMPLEMENTATION.md)
+> 📖 **使用指南**: 
+> - [5分钟快速开始](docs/QUICK_PROXY_GUIDE.md) - 快速上手抓包功能
+> - [完整代理设置指南](docs/PROXY_SETUP_GUIDE.md) - 详细配置和故障排除
+> - [抓包功能实现](docs/CAPTURE_PAGE_IMPLEMENTATION.md) - 技术实现文档
 
 ### 4. 设备管理
 
@@ -647,6 +650,8 @@ pip install -r Open-AutoGLM/requirements.txt
 - 📘 [快速开始指南](快速启动指南.md) - 5分钟快速上手
 - 🚀 [启动脚本使用说明](启动脚本使用说明.md) - 详细的启动方式和选项
 - 🎮 [手机控制功能](docs/PHONE_CONTROL.md) - 完整的手机控制API和使用说明
+- 🔍 [网络抓包快速指南](docs/QUICK_PROXY_GUIDE.md) - 5分钟学会抓包
+- 📡 [代理设置完整指南](docs/PROXY_SETUP_GUIDE.md) - 详细的代理配置和故障排除
 - 🤖 [模型设置指南](docs/MODEL_SETUP.md) - AI模型下载和配置
 - 🔧 [故障排除](TROUBLESHOOTING.md) - 常见问题解决方案
 - 🤝 [贡献指南](CONTRIBUTING.md) - 如何参与项目开发

@@ -57,11 +57,14 @@ echo "按 Ctrl+C 停止服务"
 echo "=========================================="
 echo ""
 
-# 启动 mitmweb（只监听本地）
+# 启动 mitmweb
+# --listen-host 0.0.0.0: 代理端口监听所有网络接口，允许手机连接
+# --web-host 127.0.0.1: Web 界面只监听本地，通过反向代理访问
 mitmweb \
+  --listen-host 0.0.0.0 \
   --listen-port $PROXY_PORT \
-  --web-port $WEB_PORT \
   --web-host $HOST \
+  --web-port $WEB_PORT \
   --no-web-open-browser \
   --set block_global=false
 

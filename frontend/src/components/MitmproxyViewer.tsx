@@ -36,8 +36,10 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
       if (statusData.status === 'online') {
         // 已经在运行
         setProxyUrl(statusData.proxy_url || '');
+        // 获取电脑的实际 IP 地址（从后端获取）
+        const host = statusData.proxy_host || window.location.hostname;
         setProxyInfo({
-          host: window.location.hostname,
+          host: host,
           port: statusData.proxy_port || 0,
         });
         setStatus('online');
@@ -48,8 +50,9 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
 
         if (startResult.success) {
           setProxyUrl(startResult.proxy_url || '');
+          const host = startResult.proxy_host || window.location.hostname;
           setProxyInfo({
-            host: window.location.hostname,
+            host: host,
             port: startResult.proxy_port || 0,
           });
           setStatus('online');
