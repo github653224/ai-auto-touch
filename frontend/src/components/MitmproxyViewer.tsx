@@ -117,9 +117,6 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
     );
   }
 
-  // 获取直接访问的 URL（绕过反向代理）
-  const directUrl = proxyInfo ? `http://localhost:${proxyInfo.port + 100}` : '';
-
   return (
     <div className="mitmproxy-viewer-container">
       {proxyInfo && (
@@ -133,37 +130,9 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
               (在手机 WiFi 设置中配置此代理)
             </span>
           </div>
-          <div style={{ marginTop: 16, padding: '12px', background: '#f0f7ff', borderRadius: 4, border: '1px solid #91d5ff' }}>
-            <div style={{ marginBottom: 8, color: '#0050b3', fontWeight: 500 }}>
-              💡 推荐使用直接访问方式
-            </div>
-            <div style={{ fontSize: 13, color: '#595959', marginBottom: 8 }}>
-              由于反向代理兼容性问题，建议在新标签页打开 mitmproxy：
-            </div>
-            <a 
-              href={directUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ 
-                display: 'inline-block',
-                padding: '8px 16px',
-                background: '#1890ff',
-                color: '#fff',
-                borderRadius: 4,
-                textDecoration: 'none',
-                fontSize: 14,
-                fontWeight: 500
-              }}
-            >
-              🔗 在新标签页打开 mitmproxy
-            </a>
-            <div style={{ marginTop: 8, fontSize: 12, color: '#8c8c8c' }}>
-              或复制链接：{directUrl}
-            </div>
-          </div>
         </div>
       )}
-      <div className="mitmproxy-viewer-content" style={{ display: 'none' }}>
+      <div className="mitmproxy-viewer-content">
         <iframe
           src={proxyUrl}
           className="mitmproxy-iframe"
