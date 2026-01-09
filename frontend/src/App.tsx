@@ -14,6 +14,7 @@ import ScreenDisplay from './pages/ScreenDisplay'
 import AIControl from './pages/AIControl'
 import OperationHistory from './pages/OperationHistory'
 import SystemSettings from './pages/SystemSettings'
+import CaptureView from './pages/CaptureView'
 
 const { Header, Sider, Content } = Layout
 const { Title } = Typography
@@ -93,6 +94,7 @@ const App = () => {
             <Route path="/ai" element={<AIControl />} />
             <Route path="/history" element={<OperationHistory />} />
             <Route path="/settings" element={<SystemSettings />} />
+            <Route path="/device/:deviceId/capture" element={<CaptureView />} />
           </Routes>
         </Content>
       </Layout>
