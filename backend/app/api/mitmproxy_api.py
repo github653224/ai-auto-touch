@@ -77,7 +77,11 @@ async def proxy_mitmweb(device_id: str, path: str, request: Request):
             # 移除 content-encoding 头，因为 httpx 已经自动解压了内容
             # 如果不移除，浏览器会尝试再次解压导致 ERR_CONTENT_DECODING_FAILED
             response_headers.pop("content-encoding", None)
-            response_headers.pop("content-length", None)  # 长度也需要重新计算
+            
+            # 移除 content-length 和 transfer-encoding，避免冲突
+            # httpx 解压后内容长度已改变，需要让 FastAPI 重新计算
+            response_headers.pop("content-length", None)
+            response_headers.pop("transfer-encoding", None)
             
             # 添加 CORS 头
             response_headers["access-control-allow-origin"] = "*"
