@@ -287,16 +287,50 @@ async def get_flow_detail(device_id: str, flow_id: str):
 
 ## 最终推荐方案
 
-### 🎯 推荐：方案一（反向代理）+ 方案二（旧版本）组合
+### 🎯 推荐：方案一（反向代理）⭐⭐⭐⭐⭐
 
-**开发阶段：**
-- 使用 mitmproxy 10.4.2 快速验证功能
-- 直接 iframe 嵌入，无需额外开发
+**已实现功能：**
+- ✅ FastAPI 反向代理 API (`backend/app/api/mitmproxy_api.py`)
+- ✅ 自动移除 X-Frame-Options、Content-Security-Policy 等安全头
+- ✅ 添加 CORS 支持
+- ✅ 支持 HTTP 和 WebSocket 双向代理
+- ✅ 设备管理和状态检查
+- ✅ 完整的测试脚本和文档
 
-**生产环境：**
-- 升级到最新版本 mitmproxy
-- 使用 FastAPI 反向代理
-- 确保安全性和稳定性
+**使用方式：**
+
+1. **启动 mitmweb**
+   ```bash
+   bash backend/start_mitmweb_proxy.sh test-device 8091 8191
+   ```
+
+2. **启动 FastAPI 后端**
+   ```bash
+   cd backend && python main.py
+   ```
+
+3. **注册设备**
+   ```bash
+   python backend/register_mitmweb.py register --device-id test-device
+   ```
+
+4. **在前端使用**
+   ```html
+   <iframe src="http://localhost:8000/api/v1/mitmproxy/proxy/test-device/" />
+   ```
+
+**测试方式：**
+```bash
+# 一键启动所有服务并测试
+bash backend/test_mitmproxy_integration.sh
+
+# 访问测试页面
+http://localhost:8192/test_iframe_proxy.html
+```
+
+**详细文档：**
+- 测试指南: `docs/MITMPROXY_PROXY_TESTING.md`
+- API 文档: http://localhost:8000/docs
 
 ---
 
