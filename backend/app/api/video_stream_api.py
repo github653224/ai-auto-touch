@@ -126,10 +126,17 @@ async def disconnect(sid: str) -> None:
             clients.discard(sid)
             logger.info(f"Client {sid} removed from device {device_id}, remaining clients: {len(clients)}")
             
-            # 如果没有客户端了，停止该设备的流
+            # 如果没有客户端了，延迟停止该设备的流（给其他客户端连接的时间）
             if not clients:
-                logger.info(f"No more clients for device {device_id}, stopping stream")
-                await _stop_stream_for_device(device_id)
+                logger.info(f"No more clients for device {device_id}, scheduling stream stop in 2 seconds")
+                # 延迟 2 秒停止，避免页面切换时立即停止
+                await asyncio.sleep(2)
+                # 再次检查是否有新客户端连接
+                if device_id in _device_clients and not _device_clients[device_id]:
+                    logger.info(f"Still no clients for device {device_id}, stopping stream now")
+                    await _stop_stream_for_device(device_id)
+                else:
+                    logger.info(f"New clients connected for device {device_id}, keeping stream alive")
 
 
 @sio.on("connect-device")

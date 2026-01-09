@@ -1,110 +1,19 @@
-.capture-view {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: #f0f2f5;
+/* 抓包页面样式 - 使用内联样式为主，这里只保留必要的全局样式 */
+
+/* 如果需要自定义滚动条样式 */
+.ant-col::-webkit-scrollbar {
+  width: 8px;
 }
 
-.capture-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 24px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.ant-col::-webkit-scrollbar-track {
+  background: #f1f1f1;
 }
 
-.capture-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #262626;
+.ant-col::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
 }
 
-.capture-header-actions {
-  margin-left: auto;
-}
-
-.capture-content {
-  display: flex;
-  flex: 1;
-  gap: 20px;
-  padding: 20px;
-  overflow: hidden;
-}
-
-.capture-left-panel {
-  flex: 0 0 40%;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: auto;
-}
-
-.phone-screen-wrapper {
-  background: #000;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  aspect-ratio: 9 / 19;
-  max-height: 600px;
-}
-
-.phone-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.control-section {
-  background: #fff;
-  padding: 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.control-section h4 {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: #595959;
-}
-
-.button-group {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.button-group:last-child {
-  margin-bottom: 0;
-}
-
-.button-group button {
-  flex: 1;
-  min-width: 0;
-}
-
-.capture-right-panel {
-  flex: 0 0 60%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* 响应式设计 */
-@media (max-width: 1200px) {
-  .capture-content {
-    flex-direction: column;
-  }
-
-  .capture-left-panel,
-  .capture-right-panel {
-    flex: 1 1 auto;
-  }
-
-  .phone-screen-wrapper {
-    max-height: 400px;
-  }
+.ant-col::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }

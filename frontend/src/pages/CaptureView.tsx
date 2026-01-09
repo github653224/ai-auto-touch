@@ -137,11 +137,13 @@ const CaptureView: React.FC = () => {
 
   // 视频流回调
   const handleVideoReady = useCallback(() => {
-    message.success('视频流已连接');
+    console.log('✅ 抓包页面：视频流已连接');
+    message.success('视频流已连接', 1);
   }, []);
   
   const handleVideoError = useCallback((err: string) => {
-    message.error(`视频流错误: ${err}`);
+    console.error('❌ 抓包页面：视频流错误:', err);
+    message.error(`视频流错误: ${err}`, 2);
   }, []);
 
   return (
@@ -215,6 +217,22 @@ const CaptureView: React.FC = () => {
                     onReady={handleVideoReady}
                     onError={handleVideoError}
                   />
+                  {/* 屏幕尺寸信息 */}
+                  {screenSize && (
+                    <div style={{
+                      position: 'absolute',
+                      bottom: 8,
+                      right: 8,
+                      background: 'rgba(0,0,0,0.6)',
+                      color: '#fff',
+                      padding: '4px 8px',
+                      borderRadius: 4,
+                      fontSize: 10,
+                      pointerEvents: 'none',
+                    }}>
+                      {screenSize.width} × {screenSize.height}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
