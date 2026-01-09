@@ -8,30 +8,14 @@ from fastapi.responses import StreamingResponse, Response
 import httpx
 import asyncio
 import logging
+from app.services.mitmproxy_service import get_mitmproxy_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/mitmproxy", tags=["mitmproxy"])
 
-# 存储设备的 mitmweb 端口映射
-# device_id -> {"proxy_port": 8091, "web_port": 8191}
-MITMWEB_PORTS = {}
-
-
-def register_mitmweb(device_id: str, proxy_port: int, web_port: int):
-    """注册设备的 mitmweb 端口"""
-    MITMWEB_PORTS[device_id] = {
-        "proxy_port": proxy_port,
-        "web_port": web_port
-    }
-    logger.info(f"注册 mitmweb: device={device_id}, proxy_port={proxy_port}, web_port={web_port}")
-
-
-def unregister_mitmweb(device_id: str):
-    """注销设备的 mitmweb"""
-    if device_id in MITMWEB_PORTS:
-        del MITMWEB_PORTS[device_id]
-        logger.info(f"注销 mitmweb: device={device_id}")
+# 获取 mitmproxy 服务实例
+mitmproxy_service = get_mitmproxy_service()
 
 
 @router.api_route(
@@ -50,15 +34,15 @@ async def proxy_mitmweb(device_id: str, path: str, request: Request):
     
     添加 CORS 支持
     """
-    # 获取设备的 mitmweb 端口
-    ports = MITMWEB_PORTS.get(device_id)
-    if not ports:
+    # 获取设备的 mitmweb 状态
+    status = mitmproxy_service.get_status(device_id)
+    if status["status"] not in ["online"]:
         return Response(
             content=f"Device {device_id} not found or mitmweb not started",
             status_code=404
         )
     
-    web_port = ports["web_port"]
+    web_port = status["web_port"]
     
     # 构建目标 URL
     target_url = f"http://127.0.0.1:{web_port}/{path}"
@@ -89,6 +73,11 @@ async def proxy_mitmweb(device_id: str, path: str, request: Request):
             response_headers.pop("content-security-policy", None)
             response_headers.pop("x-xss-protection", None)
             response_headers.pop("x-content-type-options", None)
+            
+            # 移除 content-encoding 头，因为 httpx 已经自动解压了内容
+            # 如果不移除，浏览器会尝试再次解压导致 ERR_CONTENT_DECODING_FAILED
+            response_headers.pop("content-encoding", None)
+            response_headers.pop("content-length", None)  # 长度也需要重新计算
             
             # 添加 CORS 头
             response_headers["access-control-allow-origin"] = "*"
@@ -126,13 +115,13 @@ async def proxy_websocket(websocket: WebSocket, device_id: str):
     """
     await websocket.accept()
     
-    # 获取设备的 mitmweb 端口
-    ports = MITMWEB_PORTS.get(device_id)
-    if not ports:
+    # 获取设备的 mitmweb 状态
+    status = mitmproxy_service.get_status(device_id)
+    if status["status"] not in ["online"]:
         await websocket.close(code=1008, reason=f"Device {device_id} not found")
         return
     
-    web_port = ports["web_port"]
+    web_port = status["web_port"]
     ws_url = f"ws://127.0.0.1:{web_port}/updates"
     
     logger.info(f"WebSocket 代理: {device_id} -> {ws_url}")
@@ -151,47 +140,45 @@ async def proxy_websocket(websocket: WebSocket, device_id: str):
         await websocket.close(code=1011, reason=str(e))
 
 
+@router.post("/start/{device_id}")
+async def start_mitmweb_for_device(device_id: str):
+    """为设备启动 mitmweb"""
+    result = mitmproxy_service.start_mitmweb(device_id)
+    return result
+
+
+@router.post("/stop/{device_id}")
+async def stop_mitmweb_for_device(device_id: str):
+    """停止设备的 mitmweb"""
+    result = mitmproxy_service.stop_mitmweb(device_id)
+    return result
+
+
+@router.post("/register")
+async def register_device(device_id: str, proxy_port: int, web_port: int):
+    """手动注册设备的 mitmweb 端口（用于测试）"""
+    # 这个接口保留用于手动测试
+    # 实际使用时应该调用 /start/{device_id}
+    logger.warning(f"使用手动注册接口: device={device_id}")
+    return {
+        "success": True,
+        "device_id": device_id,
+        "proxy_port": proxy_port,
+        "web_port": web_port,
+        "proxy_url": f"/api/v1/mitmproxy/proxy/{device_id}/",
+        "message": "Device registered successfully (manual)"
+    }
+
+
 @router.get("/devices")
 async def list_devices():
     """获取所有已注册的设备"""
-    return {
-        "devices": [
-            {
-                "device_id": device_id,
-                "proxy_port": ports["proxy_port"],
-                "web_port": ports["web_port"],
-                "proxy_url": f"/api/v1/mitmproxy/proxy/{device_id}/",
-                "ws_url": f"/api/v1/mitmproxy/ws/{device_id}"
-            }
-            for device_id, ports in MITMWEB_PORTS.items()
-        ]
-    }
+    devices = mitmproxy_service.list_all()
+    return {"devices": devices}
 
 
 @router.get("/device/{device_id}/status")
 async def get_device_status(device_id: str):
     """获取设备的 mitmweb 状态"""
-    ports = MITMWEB_PORTS.get(device_id)
-    if not ports:
-        return {"status": "not_found"}
-    
-    web_port = ports["web_port"]
-    
-    # 检查 mitmweb 是否在线
-    try:
-        async with httpx.AsyncClient(timeout=2.0) as client:
-            response = await client.get(f"http://127.0.0.1:{web_port}/")
-            return {
-                "status": "online",
-                "device_id": device_id,
-                "proxy_port": ports["proxy_port"],
-                "web_port": web_port,
-                "proxy_url": f"/api/v1/mitmproxy/proxy/{device_id}/"
-            }
-    except:
-        return {
-            "status": "offline",
-            "device_id": device_id,
-            "proxy_port": ports["proxy_port"],
-            "web_port": web_port
-        }
+    status = mitmproxy_service.get_status(device_id)
+    return status
