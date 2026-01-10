@@ -1,0 +1,60 @@
+.traffic-list-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+}
+
+.traffic-list-header {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.traffic-list-content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.traffic-list-content .ant-table {
+  font-size: 12px;
+}
+
+.traffic-list-content .ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.traffic-list-content .ant-table-tbody > tr:hover {
+  cursor: pointer;
+}
+
+/* 详情抽屉样式 */
+.headers-container {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.header-item {
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 12px;
+}
+
+.header-item:last-child {
+  border-bottom: none;
+}
+
+.content-pre {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  max-height: 400px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

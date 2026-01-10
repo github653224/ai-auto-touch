@@ -222,7 +222,7 @@ const AIControl = () => {
                 >
                   {selectedDevice ? (
                     <ScrcpyPlayer
-                      key={`ai-${selectedDevice}`}
+                      key={selectedDevice}
                       deviceId={selectedDevice}
                       maxSize={1080}
                       bitRate={4_000_000}

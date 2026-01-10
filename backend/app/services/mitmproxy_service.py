@@ -82,7 +82,7 @@ class MitmproxyService:
                 "device_id": str,
                 "proxy_port": int,
                 "web_port": int,
-                "proxy_url": str,
+                "proxy_host": str,
                 "message": str
             }
         """
@@ -95,15 +95,18 @@ class MitmproxyService:
                     "success": True,
                     "device_id": device_id,
                     "proxy_port": process_info["proxy_port"],
-                    "web_port": process_info["web_port"],
+                    "web_port": process_info.get("web_port"),
                     "proxy_host": self._get_local_ip(),
-                    "proxy_url": f"/api/v1/mitmproxy/proxy/{device_id}/",
                     "message": "mitmweb already running"
                 }
         
         try:
             # 分配端口
-            proxy_port, web_port = self._allocate_ports(device_id)
+            proxy_port = self._find_free_port(self.base_proxy_port)
+            web_port = self._find_free_port(self.base_web_port)
+            
+            # 获取 addon 文件路径
+            addon_path = Path(__file__).parent / "mitmproxy_addon_standalone.py"
             
             # 启动 mitmweb 进程
             cmd = [
@@ -113,7 +116,13 @@ class MitmproxyService:
                 "--web-host", "127.0.0.1",  # Web 界面只监听本地
                 "--web-port", str(web_port),
                 "--no-web-open-browser",
+                "--ssl-insecure",  # 忽略上游服务器的 SSL 证书错误
                 "--set", "block_global=false",
+                "--set", "stream_large_bodies=1m",  # 流式传输大文件（超过 1MB 不存储）
+                "--set", "content_view_lines_cutoff=100",  # 限制内容显示行数，减少渲染负担
+                "--set", "web_debug=false",  # 禁用 web 调试模式
+                "--set", "termlog_verbosity=warn",  # 降低日志级别
+                "-s", str(addon_path),  # 加载我们的 addon
             ]
             
             logger.info(f"启动 mitmweb: {' '.join(cmd)}")
@@ -150,7 +159,6 @@ class MitmproxyService:
                 "proxy_port": proxy_port,
                 "web_port": web_port,
                 "proxy_host": self._get_local_ip(),
-                "proxy_url": f"/api/v1/mitmproxy/proxy/{device_id}/",
                 "message": "mitmweb started successfully"
             }
             
@@ -236,10 +244,9 @@ class MitmproxyService:
                 "status": "online",
                 "device_id": device_id,
                 "proxy_port": process_info["proxy_port"],
-                "web_port": process_info["web_port"],
+                "web_port": process_info.get("web_port"),
                 "proxy_host": self._get_local_ip(),
-                "pid": process_info["pid"],
-                "proxy_url": f"/api/v1/mitmproxy/proxy/{device_id}/"
+                "pid": process_info["pid"]
             }
         else:
             # 进程已死，清理记录

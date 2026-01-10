@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
-from app.api import device_api, ai_api, websocket_api, ai_websocket_api, phone_control_api, mitmproxy_api
+from app.api import device_api, ai_api, websocket_api, ai_websocket_api, phone_control_api, mitmproxy_api, frida_api, device_lock_api
 from app.api.video_stream_api import sio, get_stream_status, reset_all_streams
 from app.core.config import settings
 
@@ -33,6 +33,8 @@ app.include_router(phone_control_api.router, prefix=settings.API_V1_STR + "/cont
 app.include_router(websocket_api.router, prefix=settings.API_V1_STR + "/ws", tags=["实时通信"])
 app.include_router(ai_websocket_api.router, prefix=settings.API_V1_STR + "/ws", tags=["AI实时日志"])
 app.include_router(mitmproxy_api.router, tags=["mitmproxy 抓包"])
+app.include_router(frida_api.router, tags=["Frida SSL Unpinning"])
+app.include_router(device_lock_api.router, tags=["设备锁定"])
 
 # 根路由
 @app.get("/")

@@ -213,7 +213,7 @@ const CaptureView: React.FC = () => {
                   }}
                 >
                   <ScrcpyPlayer 
-                    key={`capture-${deviceId}`}
+                    key={deviceId}
                     deviceId={deviceId}
                     onReady={handleVideoReady}
                     onError={handleVideoError}

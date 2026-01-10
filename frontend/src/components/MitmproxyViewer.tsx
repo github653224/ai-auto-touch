@@ -1,12 +1,13 @@
 /**
- * Mitmproxy Web 界面查看器
- * 通过 iframe 嵌入 mitmweb 界面
+ * Mitmproxy 抓包查看器
+ * 显示自定义流量列表 + mitmweb 按钮
  */
 
 import React, { useEffect, useState } from 'react';
 import { Spin, Alert, Button } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined, GlobalOutlined } from '@ant-design/icons';
 import { startMitmweb, getMitmwebStatus } from '../api/mitmproxyApi';
+import TrafficList from './TrafficList';
 import './MitmproxyViewer.css';
 
 interface MitmproxyViewerProps {
@@ -17,10 +18,8 @@ type ViewerStatus = 'loading' | 'starting' | 'online' | 'error';
 
 const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
   const [status, setStatus] = useState<ViewerStatus>('loading');
-  const [proxyUrl, setProxyUrl] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [proxyInfo, setProxyInfo] = useState<{ host: string; port: number } | null>(null);
-  const [iframeKey, setIframeKey] = useState<number>(0); // 用于强制刷新 iframe
+  const [proxyInfo, setProxyInfo] = useState<{ host: string; port: number; webPort: number } | null>(null);
 
   useEffect(() => {
     initMitmweb();
@@ -36,12 +35,14 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
 
       if (statusData.status === 'online') {
         // 已经在运行
-        setProxyUrl(statusData.proxy_url || '');
-        // 获取电脑的实际 IP 地址（从后端获取）
         const host = statusData.proxy_host || window.location.hostname;
+        const webPort = statusData.web_port || 8191;
+        console.log('mitmweb 状态:', statusData);
+        console.log('使用 web 端口:', webPort);
         setProxyInfo({
           host: host,
           port: statusData.proxy_port || 0,
+          webPort: webPort,
         });
         setStatus('online');
       } else {
@@ -50,11 +51,14 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
         const startResult = await startMitmweb(deviceId);
 
         if (startResult.success) {
-          setProxyUrl(startResult.proxy_url || '');
           const host = startResult.proxy_host || window.location.hostname;
+          const webPort = startResult.web_port || 8191;
+          console.log('mitmweb 启动结果:', startResult);
+          console.log('使用 web 端口:', webPort);
           setProxyInfo({
             host: host,
             port: startResult.proxy_port || 0,
+            webPort: webPort,
           });
           setStatus('online');
         } else {
@@ -72,9 +76,13 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
     initMitmweb();
   };
 
-  // 刷新 iframe（不刷新整个页面）
-  const handleRefreshIframe = () => {
-    setIframeKey(prev => prev + 1);
+  const handleOpenMitmweb = () => {
+    if (proxyInfo) {
+      const url = `http://localhost:${proxyInfo.webPort}`;
+      console.log('打开 mitmweb 界面:', url);
+      console.log('当前 proxyInfo:', proxyInfo);
+      window.open(url, '_blank');
+    }
   };
 
   if (status === 'loading') {
@@ -135,25 +143,18 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
             <span className="proxy-hint">
               (在手机 WiFi 设置中配置此代理)
             </span>
-            <Button 
-              size="small"
-              icon={<ReloadOutlined />}
-              onClick={handleRefreshIframe}
-              style={{ marginLeft: 16 }}
-            >
-              刷新抓包界面
-            </Button>
           </div>
+          <Button 
+            icon={<GlobalOutlined />}
+            onClick={handleOpenMitmweb}
+            style={{ marginLeft: 'auto' }}
+          >
+            打开完整界面
+          </Button>
         </div>
       )}
       <div className="mitmproxy-viewer-content">
-        <iframe
-          key={iframeKey}
-          src={proxyUrl}
-          className="mitmproxy-iframe"
-          title="mitmproxy"
-          sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-        />
+        <TrafficList deviceId={deviceId} />
       </div>
     </div>
   );
