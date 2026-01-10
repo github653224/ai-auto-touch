@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
 from app.api import device_api, ai_api, websocket_api, ai_websocket_api, phone_control_api, mitmproxy_api
-from app.api.video_stream_api import sio
+from app.api.video_stream_api import sio, get_stream_status, reset_all_streams
 from app.core.config import settings
 
 # 创建FastAPI应用
@@ -42,6 +42,22 @@ async def root():
         "docs_url": "/docs",
         "version": settings.VERSION
     }
+
+
+# 调试端点：获取视频流状态
+@app.get("/api/v1/debug/stream-status")
+async def debug_stream_status():
+    """获取当前视频流状态（用于调试）"""
+    return get_stream_status()
+
+
+# 调试端点：重置所有视频流
+@app.post("/api/v1/debug/reset-streams")
+async def debug_reset_streams():
+    """重置所有视频流（用于调试）"""
+    reset_all_streams()
+    return {"message": "All streams reset"}
+
 
 if __name__ == "__main__":
     uvicorn.run(

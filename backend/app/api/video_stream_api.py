@@ -121,22 +121,34 @@ async def disconnect(sid: str) -> None:
     logger.info("Socket.IO client disconnected: %s", sid)
     
     # 从所有设备的客户端列表中移除该客户端
+    devices_to_check = []
     for device_id, clients in list(_device_clients.items()):
         if sid in clients:
             clients.discard(sid)
-            logger.info(f"Client {sid} removed from device {device_id}, remaining clients: {len(clients)}")
+            remaining = len(clients)
+            logger.info(f"Client {sid} removed from device {device_id}, remaining clients: {remaining}")
             
-            # 如果没有客户端了，延迟停止该设备的流（给其他客户端连接的时间）
-            if not clients:
-                logger.info(f"No more clients for device {device_id}, scheduling stream stop in 5 seconds")
-                # 延迟 5 秒停止，避免页面切换时立即停止
-                await asyncio.sleep(5)
-                # 再次检查是否有新客户端连接
-                if device_id in _device_clients and not _device_clients[device_id]:
-                    logger.info(f"Still no clients for device {device_id}, stopping stream now")
-                    await _stop_stream_for_device(device_id)
-                else:
-                    logger.info(f"New clients connected for device {device_id}, keeping stream alive")
+            # 如果没有客户端了，记录下来稍后检查
+            if remaining == 0:
+                devices_to_check.append(device_id)
+    
+    # 延迟检查是否需要停止流
+    for device_id in devices_to_check:
+        logger.info(f"No more clients for device {device_id}, scheduling stream stop in 3 seconds")
+        # 使用 asyncio.create_task 来避免阻塞
+        asyncio.create_task(_delayed_stream_stop(device_id, 3))
+
+
+async def _delayed_stream_stop(device_id: str, delay: int) -> None:
+    """延迟停止视频流"""
+    await asyncio.sleep(delay)
+    # 再次检查是否有新客户端连接
+    current_clients = _device_clients.get(device_id, set())
+    if not current_clients:
+        logger.info(f"Still no clients for device {device_id} after {delay}s, stopping stream now")
+        await _stop_stream_for_device(device_id)
+    else:
+        logger.info(f"New clients connected for device {device_id} ({len(current_clients)}), keeping stream alive")
 
 
 @sio.on("connect-device")
@@ -225,3 +237,24 @@ async def connect_device(sid: str, data: dict | None) -> None:
 
         _device_streamers[device_id] = streamer
         _stream_tasks[device_id] = asyncio.create_task(_broadcast_packets(device_id, streamer))
+
+
+# 调试函数：获取当前状态
+def get_stream_status() -> dict:
+    """获取当前视频流状态（用于调试）"""
+    return {
+        "streamers": list(_device_streamers.keys()),
+        "tasks": list(_stream_tasks.keys()),
+        "clients": {
+            device_id: list(clients) 
+            for device_id, clients in _device_clients.items()
+        },
+    }
+
+
+def reset_all_streams() -> None:
+    """重置所有视频流（用于调试）"""
+    logger.warning("Resetting all video streams")
+    stop_streamers()
+    _device_clients.clear()
+    _device_locks.clear()

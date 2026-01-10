@@ -48,6 +48,16 @@ export const ScrcpyPlayer = ({
   const socketRef = useRef<Socket | null>(null)
   const decoderRef = useRef<WebCodecsVideoDecoder | null>(null)
   const instanceIdRef = useRef<number>(++instanceCounter)
+  
+  // 使用 ref 存储回调函数，避免依赖问题
+  const onReadyRef = useRef(onReady)
+  const onErrorRef = useRef(onError)
+  
+  useEffect(() => {
+    onReadyRef.current = onReady
+    onErrorRef.current = onError
+  }, [onReady, onError])
+  
   const [status, setStatus] = useState<'connecting' | 'connected' | 'error'>('connecting')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [screenInfo, setScreenInfo] = useState<{ width: number; height: number } | null>(null)
@@ -169,18 +179,12 @@ export const ScrcpyPlayer = ({
         })
         socketRef.current = socket
 
-        socket.on('connect', () => {
-          if (!mounted) return
-          log(`Socket 已连接，发送 connect-device`)
-          socket!.emit('connect-device', {
-            device_id: deviceId,
-            maxSize,
-            bitRate,
-          })
-        })
-
-        socket.on('video-metadata', async (metadata: VideoMetadata) => {
-          if (!mounted) return
+        // 先设置所有事件监听器，再等待连接
+        const handleVideoMetadata = async (metadata: VideoMetadata) => {
+          if (!mounted) {
+            log(`收到元数据但组件已卸载，忽略`)
+            return
+          }
 
           try {
             log(`收到视频元数据:`, metadata)
@@ -202,15 +206,13 @@ export const ScrcpyPlayer = ({
             canvas = canvasRef.current
             
             // 设置视频流
-            let streamClosed = false
-            
             const videoStream = new ReadableStream<VideoPacket>({
               start(controller) {
                 let configurationPacketSent = false
                 let pendingDataPackets: VideoPacket[] = []
 
                 const videoDataHandler = (data: VideoPacket) => {
-                  if (streamClosed || !mounted) return
+                  if (!mounted) return
                   try {
                     const payload = {
                       ...data,
@@ -249,16 +251,20 @@ export const ScrcpyPlayer = ({
               })
             
             setStatus('connected')
-            onReady?.()
+            log(`视频流已连接`)
+            onReadyRef.current?.()
           } catch (e: any) {
             console.error('初始化失败:', e)
             if (mounted) {
               setStatus('error')
               setErrorMessage(e.message)
-              onError?.(e.message)
+              onErrorRef.current?.(e.message)
             }
           }
-        })
+        }
+
+        // 设置事件监听器
+        socket.on('video-metadata', handleVideoMetadata)
 
         socket.on('error', (error: { message?: string }) => {
           if (!mounted) return
@@ -266,7 +272,7 @@ export const ScrcpyPlayer = ({
           console.error('Socket 错误:', msg)
           setStatus('error')
           setErrorMessage(msg)
-          onError?.(msg)
+          onErrorRef.current?.(msg)
         })
 
         socket.on('disconnect', (reason) => {
@@ -281,15 +287,36 @@ export const ScrcpyPlayer = ({
           log(`连接错误:`, error)
           setStatus('error')
           setErrorMessage('连接失败')
-          onError?.('连接失败')
+          onErrorRef.current?.('连接失败')
         })
+
+        // 等待连接成功后发送 connect-device
+        socket.on('connect', () => {
+          if (!mounted) return
+          log(`Socket 已连接，发送 connect-device`)
+          socket!.emit('connect-device', {
+            device_id: deviceId,
+            maxSize,
+            bitRate,
+          })
+        })
+
+        // 如果 socket 已经连接（不太可能，但以防万一）
+        if (socket.connected) {
+          log(`Socket 已经连接，立即发送 connect-device`)
+          socket.emit('connect-device', {
+            device_id: deviceId,
+            maxSize,
+            bitRate,
+          })
+        }
 
       } catch (e: any) {
         if (!mounted) return
         console.error('连接失败:', e)
         setStatus('error')
         setErrorMessage(e.message)
-        onError?.(e.message)
+        onErrorRef.current?.(e.message)
       }
     }
 
@@ -333,7 +360,7 @@ export const ScrcpyPlayer = ({
       
       log(`清理完成`)
     }
-  }, [deviceId, maxSize, bitRate, createDecoder, log, onReady, onError])
+  }, [deviceId, maxSize, bitRate])
 
   return (
     <div

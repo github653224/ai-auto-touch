@@ -20,6 +20,7 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
   const [proxyUrl, setProxyUrl] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [proxyInfo, setProxyInfo] = useState<{ host: string; port: number } | null>(null);
+  const [iframeKey, setIframeKey] = useState<number>(0); // 用于强制刷新 iframe
 
   useEffect(() => {
     initMitmweb();
@@ -69,6 +70,11 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
 
   const handleRetry = () => {
     initMitmweb();
+  };
+
+  // 刷新 iframe（不刷新整个页面）
+  const handleRefreshIframe = () => {
+    setIframeKey(prev => prev + 1);
   };
 
   if (status === 'loading') {
@@ -130,17 +136,19 @@ const MitmproxyViewer: React.FC<MitmproxyViewerProps> = ({ deviceId }) => {
               (在手机 WiFi 设置中配置此代理)
             </span>
             <Button 
-              size="small" 
-              onClick={() => window.location.reload()}
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={handleRefreshIframe}
               style={{ marginLeft: 16 }}
             >
-              刷新页面
+              刷新抓包界面
             </Button>
           </div>
         </div>
       )}
       <div className="mitmproxy-viewer-content">
         <iframe
+          key={iframeKey}
           src={proxyUrl}
           className="mitmproxy-iframe"
           title="mitmproxy"
