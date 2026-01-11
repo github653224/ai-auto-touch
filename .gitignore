@@ -89,6 +89,9 @@ backend/__pycache__/
 auto-touch/
 AutoGLM-GUI/
 
+# Archive directory (old debug scripts and docs)
+archive/
+
 # Database
 *.db
 *.sqlite
