@@ -10,6 +10,13 @@ python-multipart==0.0.9
 websockets==12.0
 python-socketio>=5.11.0
 
+# HTTP 客户端
+httpx>=0.27.0
+
+# ==================== 网络抓包 ====================
+# mitmproxy - HTTPS 抓包工具
+mitmproxy>=10.0.0
+
 # ==================== 系统工具 ====================
 # 进程管理
 psutil==5.9.8
