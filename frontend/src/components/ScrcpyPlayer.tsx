@@ -33,6 +33,9 @@ interface VideoPacket {
   timestamp?: number
 }
 
+// 生成唯一 ID
+let instanceCounter = 0
+
 export const ScrcpyPlayer = ({
   deviceId,
   maxSize = 1280,
@@ -44,10 +47,24 @@ export const ScrcpyPlayer = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const socketRef = useRef<Socket | null>(null)
   const decoderRef = useRef<WebCodecsVideoDecoder | null>(null)
-  const hasReceivedDataRef = useRef(false)
+  const instanceIdRef = useRef<number>(++instanceCounter)
+  
+  // 使用 ref 存储回调函数，避免依赖问题
+  const onReadyRef = useRef(onReady)
+  const onErrorRef = useRef(onError)
+  
+  useEffect(() => {
+    onReadyRef.current = onReady
+    onErrorRef.current = onError
+  }, [onReady, onError])
+  
   const [status, setStatus] = useState<'connecting' | 'connected' | 'error'>('connecting')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [screenInfo, setScreenInfo] = useState<{ width: number; height: number } | null>(null)
+
+  const log = useCallback((msg: string, ...args: any[]) => {
+    console.log(`[ScrcpyPlayer #${instanceIdRef.current}] ${msg}`, ...args)
+  }, [])
 
   // 创建视频帧渲染器
   const createVideoFrameRenderer = useCallback(async () => {
@@ -77,8 +94,20 @@ export const ScrcpyPlayer = ({
       canvasRef.current = element
 
       // 添加 canvas 到容器
-      if (containerRef.current && !element.parentElement) {
+      log(`添加 Canvas 到容器`)
+      if (containerRef.current) {
+        // 先清理容器中的旧 canvas
+        const existingCanvas = containerRef.current.querySelector('canvas')
+        if (existingCanvas) {
+          log(`移除旧的 Canvas`)
+          existingCanvas.remove()
+        }
+        
+        // 添加新 canvas
         containerRef.current.appendChild(element)
+        log(`Canvas 已添加到容器`)
+      } else {
+        log(`Canvas 添加失败: container 不存在`)
       }
 
       const decoder = new WebCodecsVideoDecoder({
@@ -89,13 +118,13 @@ export const ScrcpyPlayer = ({
       // 监听尺寸变化
       decoder.sizeChanged(({ width, height }) => {
         setScreenInfo({ width, height })
-        console.log(`✅ 视频尺寸: ${width}x${height}`)
+        log(`视频尺寸: ${width}x${height}`)
       })
 
-      console.log('✅ 解码器已创建')
+      log('解码器已创建')
       return decoder
     },
-    [createVideoFrameRenderer]
+    [createVideoFrameRenderer, log]
   )
 
   // 更新 canvas 尺寸
@@ -135,198 +164,168 @@ export const ScrcpyPlayer = ({
     updateCanvasSize()
   }, [screenInfo, updateCanvasSize])
 
-  // 标记已收到数据
-  const markDataReceived = useCallback(() => {
-    if (hasReceivedDataRef.current) return
-    hasReceivedDataRef.current = true
-  }, [])
-
-  // 设置视频流
-  const setupVideoStream = useCallback(
-    (_metadata: VideoMetadata) => {
-      let configurationPacketSent = false
-      let pendingDataPackets: VideoPacket[] = []
-
-      const transformStream = new TransformStream<VideoPacket, VideoPacket>({
-        transform(packet, controller) {
-          if (packet.type === 'configuration') {
-            controller.enqueue(packet)
-            configurationPacketSent = true
-
-            if (pendingDataPackets.length > 0) {
-              pendingDataPackets.forEach(p => controller.enqueue(p))
-              pendingDataPackets = []
-            }
-            return
-          }
-
-          if (packet.type === 'data' && !configurationPacketSent) {
-            pendingDataPackets.push(packet)
-            return
-          }
-
-          controller.enqueue(packet)
-        },
-      })
-
-      const videoStream = new ReadableStream<VideoPacket>({
-        start(controller) {
-          let streamClosed = false
-
-          const videoDataHandler = (data: VideoPacket) => {
-            if (streamClosed) return
-            try {
-              markDataReceived()
-              const payload = {
-                ...data,
-                data:
-                  data.data instanceof Uint8Array
-                    ? data.data
-                    : new Uint8Array(data.data),
-              }
-              controller.enqueue(payload)
-            } catch (error) {
-              console.error('❌ 视频数据入队失败:', error)
-              streamClosed = true
-              cleanup()
-            }
-          }
-
-          const errorHandler = (error: { message?: string }) => {
-            if (streamClosed) return
-            controller.error(new Error(error?.message || 'Socket 错误'))
-            streamClosed = true
-            cleanup()
-          }
-
-          const disconnectHandler = () => {
-            if (streamClosed) return
-            controller.close()
-            streamClosed = true
-            cleanup()
-          }
-
-          const cleanup = () => {
-            socketRef.current?.off('video-data', videoDataHandler)
-            socketRef.current?.off('error', errorHandler)
-            socketRef.current?.off('disconnect', disconnectHandler)
-          }
-
-          socketRef.current?.on('video-data', videoDataHandler)
-          socketRef.current?.on('error', errorHandler)
-          socketRef.current?.on('disconnect', disconnectHandler)
-
-          return () => {
-            streamClosed = true
-            cleanup()
-          }
-        },
-      })
-
-      return videoStream.pipeThrough(transformStream)
-    },
-    [markDataReceived]
-  )
-
   // 连接设备
   useEffect(() => {
     if (!deviceId) return
 
     let mounted = true
-    let cleanupDone = false
-    hasReceivedDataRef.current = false
+    let socket: Socket | null = null
+    let decoder: WebCodecsVideoDecoder | null = null
+    let canvas: HTMLCanvasElement | null = null
+
+    log(`挂载，设备: ${deviceId}`)
 
     const connect = async () => {
       try {
         setStatus('connecting')
         setErrorMessage(null)
 
-        const socket = io(API_BASE_URL, {
+        log(`创建 Socket 连接`)
+        socket = io(API_BASE_URL, {
           path: '/socket.io',
           transports: ['websocket'],
-          timeout: 10000,
-          reconnection: false, // 禁用自动重连，避免冲突
+          timeout: 5000, // 缩短超时时间
+          reconnection: false,
+          forceNew: true,
         })
-
+        
         socketRef.current = socket
 
+        // 设置事件监听器
+        const handleVideoMetadata = async (metadata: VideoMetadata) => {
+          if (!mounted) {
+            log(`收到元数据但组件已卸载，忽略`)
+            return
+          }
+
+          try {
+            log(`收到视频元数据:`, metadata)
+            
+            // 只有在解码器不存在时才创建新的
+            if (!decoder) {
+              // 获取 codec ID
+              const codecId = metadata?.codec
+                ? (metadata.codec as ScrcpyVideoCodecId)
+                : ScrcpyVideoCodecId.H264
+              
+              // 创建解码器
+              decoder = await createDecoder(codecId)
+              decoderRef.current = decoder
+              canvas = canvasRef.current
+              
+              log(`解码器创建完成，开始设置视频流`)
+              
+              // 设置视频流
+              const videoStream = new ReadableStream<VideoPacket>({
+                start(controller) {
+                  let configurationPacketSent = false
+                  let pendingDataPackets: VideoPacket[] = []
+
+                  const videoDataHandler = (data: VideoPacket) => {
+                    if (!mounted) return
+                    try {
+                      const payload = {
+                        ...data,
+                        data: data.data instanceof Uint8Array
+                          ? data.data
+                          : new Uint8Array(data.data),
+                      }
+                      
+                      if (payload.type === 'configuration') {
+                        controller.enqueue(payload)
+                        configurationPacketSent = true
+                        pendingDataPackets.forEach(p => controller.enqueue(p))
+                        pendingDataPackets = []
+                      } else if (!configurationPacketSent) {
+                        pendingDataPackets.push(payload)
+                      } else {
+                        controller.enqueue(payload)
+                      }
+                    } catch (error) {
+                      console.error('视频数据入队失败:', error)
+                    }
+                  }
+
+                  socket!.on('video-data', videoDataHandler)
+                },
+              })
+
+              videoStream
+                .pipeTo(decoder.writable as WritableStream<VideoPacket>)
+                .catch((error: Error) => {
+                  if (!mounted) return
+                  console.error('视频流错误:', error)
+                  setStatus('error')
+                  setErrorMessage(error.message)
+                  onErrorRef.current?.(error.message)
+                })
+              
+              setStatus('connected')
+              log(`视频流已连接`)
+              onReadyRef.current?.()
+            } else {
+              log(`解码器已存在，跳过创建`)
+            }
+          } catch (e: any) {
+            console.error('初始化失败:', e)
+            if (mounted) {
+              setStatus('error')
+              setErrorMessage(e.message)
+              onErrorRef.current?.(e.message)
+            }
+          }
+        }
+
+        socket.on('video-metadata', handleVideoMetadata)
+
+        socket.on('error', (error: { message?: string }) => {
+          if (!mounted) return
+          const msg = error?.message || 'Socket 错误'
+          console.error('Socket 错误:', msg)
+          setStatus('error')
+          setErrorMessage(msg)
+          onErrorRef.current?.(msg)
+        })
+
+        socket.on('disconnect', (reason) => {
+          if (!mounted) return
+          log(`Socket 断开: ${reason}`)
+          
+          // 如果是正常断开，不设置错误状态
+          if (reason === 'io client disconnect' || reason === 'transport close') {
+            log(`正常断开`)
+            return
+          }
+          
+          setStatus('error')
+          setErrorMessage(`连接断开: ${reason}`)
+        })
+
+        socket.on('connect_error', (error) => {
+          if (!mounted) return
+          log(`连接错误:`, error)
+          setStatus('error')
+          setErrorMessage('连接失败')
+          onErrorRef.current?.('连接失败')
+        })
+
+        // 等待连接成功后发送 connect-device
         socket.on('connect', () => {
-          console.log('✅ Socket.IO 已连接到:', API_BASE_URL)
-          socket.emit('connect-device', {
+          if (!mounted) return
+          log(`Socket 已连接，发送 connect-device`)
+          socket!.emit('connect-device', {
             device_id: deviceId,
             maxSize,
             bitRate,
           })
         })
 
-        socket.on('video-metadata', async (metadata: VideoMetadata) => {
-          if (!mounted) return
-
-          try {
-            console.log('✅ 收到视频元数据:', metadata)
-            
-            // 清理旧的解码器
-            if (decoderRef.current) {
-              decoderRef.current.dispose()
-              decoderRef.current = null
-            }
-            
-            // 获取 codec ID
-            const codecId = metadata?.codec
-              ? (metadata.codec as ScrcpyVideoCodecId)
-              : ScrcpyVideoCodecId.H264
-            
-            // 创建解码器
-            const decoder = await createDecoder(codecId)
-            decoderRef.current = decoder
-            
-            // 设置视频流
-            const videoStream = setupVideoStream(metadata)
-            videoStream
-              .pipeTo(decoder.writable as WritableStream<VideoPacket>)
-              .catch((error: Error) => {
-                console.error('❌ 视频流错误:', error)
-                if (mounted) {
-                  setStatus('error')
-                  setErrorMessage(error.message)
-                  onError?.(error.message)
-                }
-              })
-            
-            setStatus('connected')
-            onReady?.()
-          } catch (e: any) {
-            console.error('❌ 初始化失败:', e)
-            if (mounted) {
-              setStatus('error')
-              setErrorMessage(e.message)
-              onError?.(e.message)
-            }
-            socket.close()
-          }
-        })
-
-        socket.on('error', (error: { message?: string }) => {
-          if (!mounted) return
-          const msg = error?.message || 'Socket 错误'
-          console.error('❌ Socket 错误:', msg)
-          setStatus('error')
-          setErrorMessage(msg)
-          onError?.(msg)
-        })
-
-        socket.on('disconnect', () => {
-          if (!mounted) return
-          console.log('⚠️ Socket.IO 已断开')
-          setStatus('error')
-          setErrorMessage('连接已断开')
-        })
       } catch (e: any) {
         if (!mounted) return
-        console.error('❌ 连接失败:', e)
+        console.error('连接失败:', e)
         setStatus('error')
         setErrorMessage(e.message)
-        onError?.(e.message)
+        onErrorRef.current?.(e.message)
       }
     }
 
@@ -334,56 +333,49 @@ export const ScrcpyPlayer = ({
 
     return () => {
       mounted = false
+      log(`卸载，开始清理...`)
       
-      // 防止重复清理
-      if (cleanupDone) return
-      cleanupDone = true
-      
-      console.log(`🧹 清理 ScrcpyPlayer 资源 (设备: ${deviceId})`)
-      
-      // 1. 先断开 socket 连接
-      if (socketRef.current) {
-        try {
-          socketRef.current.disconnect()
-          console.log('✅ Socket 已断开')
-        } catch (e) {
-          console.error('断开 Socket 失败:', e)
-        }
+      // 断开 Socket
+      if (socket) {
+        log(`断开 Socket`)
+        socket.removeAllListeners()
+        socket.disconnect()
+        socket = null
         socketRef.current = null
       }
       
-      // 2. 清理解码器
-      if (decoderRef.current) {
+      // 清理解码器
+      if (decoder) {
+        log(`释放解码器`)
         try {
-          decoderRef.current.dispose()
-          console.log('✅ 解码器已释放')
+          decoder.dispose()
         } catch (e) {
           console.error('关闭解码器失败:', e)
         }
+        decoder = null
         decoderRef.current = null
       }
       
-      // 3. 清理 canvas
-      if (canvasRef.current && canvasRef.current.parentElement) {
+      // 清理 canvas
+      if (canvas && canvas.parentElement) {
+        log(`移除 Canvas`)
         try {
-          canvasRef.current.parentElement.removeChild(canvasRef.current)
-          console.log('✅ Canvas 已移除')
+          canvas.parentElement.removeChild(canvas)
         } catch (e) {
           console.error('移除 Canvas 失败:', e)
         }
       }
       canvasRef.current = null
       
-      console.log(`✅ ScrcpyPlayer 清理完成 (设备: ${deviceId})`)
+      log(`清理完成`)
     }
-  }, [deviceId, maxSize, bitRate, createDecoder, setupVideoStream, onReady, onError])
+  }, [deviceId, maxSize, bitRate, createDecoder])
 
   return (
     <div
       ref={containerRef}
       style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: '#000' }}
     >
-      {/* Canvas 会由解码器动态添加 */}
       {status === 'connecting' && (
         <div
           style={{
@@ -413,7 +405,7 @@ export const ScrcpyPlayer = ({
           }}
         >
           <div>{errorMessage || '视频流错误'}</div>
-          <div style={{ fontSize: 12, marginTop: 8 }}>请检查设备连接</div>
+          <div style={{ fontSize: 12, margin: '8px 0' }}>请检查设备连接或刷新页面</div>
         </div>
       )}
     </div>

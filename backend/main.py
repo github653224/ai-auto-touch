@@ -2,8 +2,8 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
-from app.api import device_api, ai_api, websocket_api, ai_websocket_api, phone_control_api, mitmproxy_api
-from app.api.video_stream_api import sio
+from app.api import device_api, ai_api, websocket_api, ai_websocket_api, phone_control_api, mitmproxy_api, frida_api, device_lock_api
+from app.api.video_stream_api import sio, get_stream_status, reset_all_streams
 from app.core.config import settings
 
 # 创建FastAPI应用
@@ -33,6 +33,8 @@ app.include_router(phone_control_api.router, prefix=settings.API_V1_STR + "/cont
 app.include_router(websocket_api.router, prefix=settings.API_V1_STR + "/ws", tags=["实时通信"])
 app.include_router(ai_websocket_api.router, prefix=settings.API_V1_STR + "/ws", tags=["AI实时日志"])
 app.include_router(mitmproxy_api.router, tags=["mitmproxy 抓包"])
+app.include_router(frida_api.router, tags=["Frida SSL Unpinning"])
+app.include_router(device_lock_api.router, tags=["设备锁定"])
 
 # 根路由
 @app.get("/")
@@ -42,6 +44,22 @@ async def root():
         "docs_url": "/docs",
         "version": settings.VERSION
     }
+
+
+# 调试端点：获取视频流状态
+@app.get("/api/v1/debug/stream-status")
+async def debug_stream_status():
+    """获取当前视频流状态（用于调试）"""
+    return get_stream_status()
+
+
+# 调试端点：重置所有视频流
+@app.post("/api/v1/debug/reset-streams")
+async def debug_reset_streams():
+    """重置所有视频流（用于调试）"""
+    reset_all_streams()
+    return {"message": "All streams reset"}
+
 
 if __name__ == "__main__":
     uvicorn.run(

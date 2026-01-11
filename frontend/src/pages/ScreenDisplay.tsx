@@ -294,6 +294,7 @@ const ScreenDisplay = () => {
                   {/* 视频流 */}
                   {selectedDevice && (
                     <ScrcpyPlayer
+                      key={selectedDevice}
                       deviceId={selectedDevice}
                       maxSize={resolution}
                       bitRate={quality * 1_000_000}

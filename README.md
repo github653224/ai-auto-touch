@@ -11,7 +11,7 @@
 
 [功能特性](#功能特性) • [快速开始](#快速开始) • [使用文档](#使用文档) • [项目架构](#项目架构) • [贡献指南](CONTRIBUTING.md)
 
-**📚 文档导航**: [快速开始](docs/QUICK_START.md) | [手机控制](docs/PHONE_CONTROL.md) | [模型设置](docs/MODEL_SETUP.md) | [故障排除](TROUBLESHOOTING.md)
+**📚 文档导航**: [快速开始](docs/QUICK_START.md) | [手机控制](docs/PHONE_CONTROL.md) | [模型设置](docs/MODEL_SETUP.md) | [启动脚本](docs/启动脚本使用说明.md) | [故障排除](TROUBLESHOOTING.md)
 
 **🎬 视频演示**: [在 B 站观看功能展示](https://www.bilibili.com/video/BV17kieBJEB3/) - AI 批量操作手机演示
 
@@ -102,6 +102,7 @@ AI 会自动：
 - 可调节分辨率（480p - 4K）和码率（1-5 Mbps）
 - 支持全屏显示
 - 多设备同时预览
+- **稳定的视频流架构**：参考 AutoGLM-GUI 实现，每个连接独立管理，避免黑屏问题
 
 **直接点击屏幕控制设备**：
 - 点击屏幕图像即可在设备上执行操作
@@ -126,7 +127,10 @@ AI 会自动：
 - 右侧显示 mitmproxy Web 界面，实时查看网络流量
 - 支持同时操作和抓包，提高测试效率
 
-> 📖 详细配置请查看 [抓包功能文档](docs/CAPTURE_PAGE_IMPLEMENTATION.md)
+> 📖 **使用指南**: 
+> - [5分钟快速开始](docs/QUICK_PROXY_GUIDE.md) - 快速上手抓包功能
+> - [完整代理设置指南](docs/PROXY_SETUP_GUIDE.md) - 详细配置和故障排除
+> - [抓包功能实现](docs/CAPTURE_PAGE_IMPLEMENTATION.md) - 技术实现文档
 
 ### 4. 设备管理
 
@@ -644,13 +648,17 @@ pip install -r Open-AutoGLM/requirements.txt
 
 ### 📖 完整文档
 
-- 📘 [快速开始指南](快速启动指南.md) - 5分钟快速上手
-- 🚀 [启动脚本使用说明](启动脚本使用说明.md) - 详细的启动方式和选项
+- 📘 [快速开始指南](docs/快速启动指南.md) - 5分钟快速上手
+- 🚀 [启动脚本使用说明](docs/启动脚本使用说明.md) - 详细的启动方式和选项
 - 🎮 [手机控制功能](docs/PHONE_CONTROL.md) - 完整的手机控制API和使用说明
+- 🔍 [网络抓包快速指南](docs/QUICK_PROXY_GUIDE.md) - 5分钟学会抓包
+- 📡 [代理设置完整指南](docs/PROXY_SETUP_GUIDE.md) - 详细的代理配置和故障排除
 - 🤖 [模型设置指南](docs/MODEL_SETUP.md) - AI模型下载和配置
 - 🔧 [故障排除](TROUBLESHOOTING.md) - 常见问题解决方案
 - 🤝 [贡献指南](CONTRIBUTING.md) - 如何参与项目开发
 - 📝 [更新日志](CHANGELOG.md) - 版本更新记录
+- 🎯 [设备锁定功能](docs/设备锁定功能说明.md) - 多用户并发控制
+- 📹 [视频流架构说明](视频流黑屏问题最终解决方案.md) - 稳定的视频流实现
 
 ### 基本使用流程
 
@@ -866,8 +874,10 @@ ai-auto-touch/
 - [x] 手机控制 API
 - [x] 批量设备管理
 - [x] 网络抓包功能（mitmproxy 集成）
+- [x] 设备锁定功能（多用户并发控制）
+- [x] 稳定的视频流架构（参考 AutoGLM-GUI）
 - [ ] 代理自动配置和证书安装
-- [ ] 录制和回放功能
+- [ ] 录制和回放功能（参考 AutoGLM 轨迹记录）
 - [ ] 云端设备管理
 - [ ] 移动端支持
 - [ ] 更多 AI 模型支持
